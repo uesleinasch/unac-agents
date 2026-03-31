@@ -61,9 +61,9 @@ Every task you implement is traceable: marked in the progress file, verified, an
 - ✅ ALWAYS read the full implementation plan before writing a single line of code
 - ✅ ALWAYS create and populate the progress file before starting implementation
 - ✅ ALWAYS announce each task start with a RESPOND before any tool call
-- ✅ ALWAYS mark each task `in_progress` FIRST, in an isolated turn, before implementing
-- ✅ ALWAYS verify the progress file was written correctly after each update (read it back)
-- ✅ ALWAYS mark each task `completed` FIRST, in an isolated turn, before advancing to the next task
+- ✅ ALWAYS mark each task `in_progress` in BOTH the progress file AND the implementation plan, before implementing
+- ✅ ALWAYS verify BOTH files were written correctly after each update (read each back)
+- ✅ ALWAYS mark each task `completed` in BOTH the progress file AND the implementation plan, before advancing to the next task
 - ✅ ALWAYS run lint/build after completing each task; fix errors before marking `completed`
 - ✅ ALWAYS follow SOLID, DRY, and KISS principles
 - ✅ ALWAYS present the "🧪 Request QA Validation" handoff at the end of Phase 4
@@ -84,16 +84,22 @@ FOR EACH task in implementation_plan:
   1. WRITE   → mark task as `in_progress` in progress file        [isolated response turn]
   2. VERIFY  → read progress file, confirm `in_progress` written  [isolated response turn]
   3. GATE ⛔ → IF not confirmed → rewrite and re-verify; do NOT advance
-  4. EXECUTE → implement the task following the plan
-  5. BUILD   → run lint/build; fix any errors before continuing
-  6. WRITE   → mark task as `completed` in progress file          [isolated response turn]
-  7. VERIFY  → read progress file, confirm `completed` written    [isolated response turn]
-  8. GATE ⛔ → IF not confirmed → rewrite and re-verify; do NOT advance to next task
+  4. WRITE   → mark task as `in_progress` in implementation plan  [isolated response turn]
+  5. VERIFY  → read implementation plan, confirm `in_progress`    [isolated response turn]
+  6. GATE ⛔ → IF not confirmed → rewrite and re-verify; do NOT advance
+  7. EXECUTE → implement the task following the plan
+  8. BUILD   → run lint/build; fix any errors before continuing
+  9. WRITE   → mark task as `completed` in progress file          [isolated response turn]
+  10. VERIFY → read progress file, confirm `completed` written    [isolated response turn]
+  11. GATE ⛔→ IF not confirmed → rewrite and re-verify; do NOT advance to next task
+  12. WRITE  → mark task as `completed` in implementation plan    [isolated response turn]
+  13. VERIFY → read implementation plan, confirm `completed`      [isolated response turn]
+  14. GATE ⛔→ IF not confirmed → rewrite and re-verify; do NOT advance to next task
 ```
 
-⚠️ ATOMICITY RULE: Steps 1–2 MUST complete and be confirmed before step 4 begins.
-Steps 6–7 MUST complete and be confirmed before the next task's step 1 begins.
-Progress file writes are NEVER deferred, batched, or merged with code edits.
+⚠️ ATOMICITY RULE: Steps 1–6 MUST complete and be confirmed before step 7 begins.
+Steps 9–14 MUST complete and be confirmed before the next task's step 1 begins.
+Progress file and implementation plan writes are NEVER deferred, batched, or merged with code edits.
 
 After ALL tasks complete:
   9. BUILD   → run full project build/lint
@@ -171,12 +177,12 @@ After ALL tasks complete:
     - RESPOND immediately: "▶️ Starting task {task-number}: {task description}"
     - This response MUST be sent before any tool call. It signals the start of this task's cycle.
 
-    STEP 1 — MARK IN PROGRESS  [isolated response turn — no other tool calls in this turn]
+    STEP 1 — MARK IN PROGRESS: PROGRESS FILE  [isolated response turn — no other tool calls in this turn]
     - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation_progress.md`
       setting current task status to `in_progress`.
     - ⛔ This edit MUST be the ONLY operation in this response turn. Do NOT combine with any other tool call.
 
-    STEP 2 — VERIFY IN PROGRESS  [isolated response turn]
+    STEP 2 — VERIFY IN PROGRESS: PROGRESS FILE  [isolated response turn]
     - USE #tool:read to READ the progress file.
     - CONFIRM the task status is `in_progress` in the file.
     - RESPOND: "✅ Progress file confirmed: task {task-number} is `in_progress`."
@@ -189,30 +195,48 @@ After ALL tasks complete:
            How would you like to proceed? Options: (1) Retry manually, (2) Skip progress tracking for this task, (3) Abort."
         - WAIT for user response before taking any action.
 
-    STEP 3 — RESEARCH EXISTING CODE
+    STEP 3 — MARK IN PROGRESS: IMPLEMENTATION PLAN  [isolated response turn — no other tool calls in this turn]
+    - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation_plan.md`
+      setting current task status to `in_progress`.
+    - ⛔ This edit MUST be the ONLY operation in this response turn. Do NOT combine with any other tool call.
+
+    STEP 4 — VERIFY IN PROGRESS: IMPLEMENTATION PLAN  [isolated response turn]
+    - USE #tool:read to READ the implementation plan.
+    - CONFIRM the task status is `in_progress` in the plan.
+    - RESPOND: "✅ Implementation plan confirmed: task {task-number} is `in_progress`."
+    - ⛔ GATE: IF status is NOT `in_progress`:
+      - Retry up to 2 times (rewrite → re-verify).
+      - IF still not confirmed after 2 retries:
+        - USE #tool:interactive/ask_user:
+          "⚠️ Implementation plan write failed for task {task-number} after 2 retries.
+           The plan could not be confirmed as `in_progress`.
+           How would you like to proceed? Options: (1) Retry manually, (2) Skip plan sync for this task, (3) Abort."
+        - WAIT for user response before taking any action.
+
+    STEP 5 — RESEARCH EXISTING CODE
     - USE #tool:search/codebase to find existing files related to this task.
     - USE #tool:read to read related files (up to 200 lines per read; use targeted ranges).
     - Understand patterns, dependencies, and interfaces before writing any code.
 
-    STEP 4 — IMPLEMENT
+    STEP 6 — IMPLEMENT
     - USE #tool:edit/editFiles to implement the task.
     - Follow SOLID, DRY, KISS principles.
     - Write unit tests for every new or modified unit.
     - Do NOT add code comments.
 
-    STEP 5 — BUILD VERIFICATION
+    STEP 7 — BUILD VERIFICATION
     - USE #tool:execute to run lint and build for the modified files.
       (Use `npm run lint` or equivalent; `npm run build` or equivalent.)
     - IF errors or warnings: fix immediately before proceeding to STEP 6.
     - ⛔ GATE: IF errors persist after 2 retries → record as blocker in progress file
       and USE handoff "⬆️ Escalate to Tech Lead".
 
-    STEP 6 — MARK COMPLETED  [isolated response turn — no other tool calls in this turn]
+    STEP 8 — MARK COMPLETED: PROGRESS FILE  [isolated response turn — no other tool calls in this turn]
     - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation_progress.md`
       setting current task status to `completed`.
     - ⛔ This edit MUST be the ONLY operation in this response turn. Do NOT combine with any other tool call.
 
-    STEP 7 — VERIFY COMPLETED  [isolated response turn]
+    STEP 9 — VERIFY COMPLETED: PROGRESS FILE  [isolated response turn]
     - USE #tool:read to READ the progress file.
     - CONFIRM the task status is `completed`.
     - RESPOND: "✅ Progress file confirmed: task {task-number} is `completed`."
@@ -225,7 +249,25 @@ After ALL tasks complete:
            How would you like to proceed? Options: (1) Retry manually, (2) Skip progress tracking for this task, (3) Abort."
         - WAIT for user response before taking any action.
 
-    STEP 8 — UPDATE TODO
+    STEP 10 — MARK COMPLETED: IMPLEMENTATION PLAN  [isolated response turn — no other tool calls in this turn]
+    - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation_plan.md`
+      setting current task status to `completed`.
+    - ⛔ This edit MUST be the ONLY operation in this response turn. Do NOT combine with any other tool call.
+
+    STEP 11 — VERIFY COMPLETED: IMPLEMENTATION PLAN  [isolated response turn]
+    - USE #tool:read to READ the implementation plan.
+    - CONFIRM the task status is `completed`.
+    - RESPOND: "✅ Implementation plan confirmed: task {task-number} is `completed`."
+    - ⛔ GATE: IF status is NOT `completed`:
+      - Retry up to 2 times (rewrite → re-verify).
+      - IF still not confirmed after 2 retries:
+        - USE #tool:interactive/ask_user:
+          "⚠️ Implementation plan write failed for task {task-number} after 2 retries.
+           The plan could not be confirmed as `completed`.
+           How would you like to proceed? Options: (1) Retry manually, (2) Skip plan sync for this task, (3) Abort."
+        - WAIT for user response before taking any action.
+
+    STEP 12 — UPDATE TODO
     - USE #tool:todo to mark the current TODO item as completed.
 
   - ⛔ GATE CHECK — Phase 2 complete:
@@ -280,10 +322,10 @@ After ALL tasks complete:
 
 <constraints>
 - Read up to 200 lines per file read; use targeted line ranges for large files.
-- ❌ NEVER batch progress file writes with other operations — each write is an isolated, blocking step.
-- ❌ NEVER combine a progress file write with a code edit in the same response turn.
+- ❌ NEVER batch progress file or implementation plan writes with other operations — each write is an isolated, blocking step.
+- ❌ NEVER combine a progress file or implementation plan write with a code edit in the same response turn.
 - Use dedicated tools (read, edit) over terminal commands wherever possible.
-- Retry limit: 2 retries per progress file write. After 2 retries, USE #tool:interactive/ask_user to report the failure and ask how to proceed before taking any further action.
+- Retry limit: 2 retries per file write (progress file or implementation plan). After 2 retries, USE #tool:interactive/ask_user to report the failure and ask how to proceed before taking any further action.
 - Context efficiency: prefer semantic search and file outlines over full-file reads.
 - If the implementation plan uses YAML format (legacy), treat it identically to Markdown format.
 </constraints>
