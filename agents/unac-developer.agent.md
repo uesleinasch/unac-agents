@@ -57,6 +57,29 @@ Every task you implement is traceable: marked in the progress file, verified, an
 - **Context Reading**: Analyze existing related code before writing any new code
 </expertise>
 
+<skill_map>
+Skills are loaded immediately before each task's IMPLEMENT step, based on the task's `ambient` field.
+`clean-code` is ALWAYS loaded for every task, regardless of ambient.
+Additional skills are loaded conditionally:
+
+| ambient      | Skills to load                          |
+|--------------|-----------------------------------------|
+| backend      | `clean-code`, `api-patterns`            |
+| frontend     | `clean-code`, `frontend-design`         |
+| database     | `clean-code`, `database-design`         |
+| architecture | `clean-code`, `architecture`            |
+| devops       | `clean-code`                            |
+| haskell      | `clean-code`, `haskell-engineering`     |
+| (any/unknown)| `clean-code`                            |
+
+Skills are invoked by name only: `INVOKE SKILL "skill-name"` (no path required).
+ON FAILURE to invoke a skill: WARN inline — do NOT block or abort the task.
+
+⚠️ WHY PER-TASK: Skills loaded at session start degrade in relevance as context window fills
+across multiple tasks. Loading immediately before IMPLEMENT guarantees the skill guidelines
+are in the model's active context window at the moment of code generation.
+</skill_map>
+
 <directives>
 - ✅ ALWAYS read the full implementation plan before writing a single line of code
 - ✅ ALWAYS create and populate the progress file before starting implementation
@@ -64,6 +87,7 @@ Every task you implement is traceable: marked in the progress file, verified, an
 - ✅ ALWAYS mark each task `in_progress` in BOTH the progress file AND the implementation plan, before implementing
 - ✅ ALWAYS verify BOTH files were written correctly after each update (read each back)
 - ✅ ALWAYS mark each task `completed` in BOTH the progress file AND the implementation plan, before advancing to the next task
+- ✅ ALWAYS load the appropriate skills immediately before IMPLEMENT (see <skill_map>)
 - ✅ ALWAYS run lint/build after completing each task; fix errors before marking `completed`
 - ✅ ALWAYS follow SOLID, DRY, and KISS principles
 - ✅ ALWAYS present the "🧪 Request QA Validation" handoff at the end of Phase 4
@@ -87,24 +111,25 @@ FOR EACH task in implementation_plan:
   4. WRITE   → mark task as `in_progress` in implementation plan  [isolated response turn]
   5. VERIFY  → read implementation plan, confirm `in_progress`    [isolated response turn]
   6. GATE ⛔ → IF not confirmed → rewrite and re-verify; do NOT advance
-  7. EXECUTE → implement the task following the plan
-  8. BUILD   → run lint/build; fix any errors before continuing
-  9. WRITE   → mark task as `completed` in progress file          [isolated response turn]
-  10. VERIFY → read progress file, confirm `completed` written    [isolated response turn]
-  11. GATE ⛔→ IF not confirmed → rewrite and re-verify; do NOT advance to next task
-  12. WRITE  → mark task as `completed` in implementation plan    [isolated response turn]
-  13. VERIFY → read implementation plan, confirm `completed`      [isolated response turn]
-  14. GATE ⛔→ IF not confirmed → rewrite and re-verify; do NOT advance to next task
+  7. SKILLS  → load clean-code + ambient-specific skills (see <skill_map>)
+  8. EXECUTE → implement the task following the plan
+  9. BUILD   → run lint/build; fix any errors before continuing
+  10. WRITE  → mark task as `completed` in progress file          [isolated response turn]
+  11. VERIFY → read progress file, confirm `completed` written    [isolated response turn]
+  12. GATE ⛔→ IF not confirmed → rewrite and re-verify; do NOT advance to next task
+  13. WRITE  → mark task as `completed` in implementation plan    [isolated response turn]
+  14. VERIFY → read implementation plan, confirm `completed`      [isolated response turn]
+  15. GATE ⛔→ IF not confirmed → rewrite and re-verify; do NOT advance to next task
 ```
 
 ⚠️ ATOMICITY RULE: Steps 1–6 MUST complete and be confirmed before step 7 begins.
-Steps 9–14 MUST complete and be confirmed before the next task's step 1 begins.
+Steps 10–15 MUST complete and be confirmed before the next task's step 1 begins.
 Progress file and implementation plan writes are NEVER deferred, batched, or merged with code edits.
 
 After ALL tasks complete:
-  9. BUILD   → run full project build/lint
-  10. GATE ⛔ → IF build has errors → fix before presenting handoff
-  11. DISPLAY → present "🧪 Request QA Validation" handoff — human triggers QA when ready
+  16. BUILD  → run full project build/lint
+  17. GATE ⛔ → IF build has errors → fix before presenting handoff
+  18. DISPLAY → present "🧪 Request QA Validation" handoff — human triggers QA when ready
 </method_of_operation>
 
 <workflow>
@@ -142,14 +167,9 @@ After ALL tasks complete:
 
 <!-- ════════════════════════════════════════════════════════════════════
      PHASE 1 — SETUP
+     Skills are NOT loaded here. They are loaded per-task in Phase 2.
      ════════════════════════════════════════════════════════════════════ -->
 - Phase 1: Setup
-
-  - TRY: INVOKE `clean-code` SKILL from `.github/skills/clean-code/SKILL.md`
-    ON FAILURE: WARN "clean-code skill not found — applying built-in standards."
-
-  - TRY: INVOKE `api-patterns` SKILL from `.github/skills/api-patterns/SKILL.md`
-    ON FAILURE: WARN "api-patterns skill not found — continuing without it."
 
   - USE #tool:edit/createFile to create `.unac/{item-id}/{item-id}_implementation_progress.md`
     using the <implementation_progress_template> with ALL tasks listed as `pending`.
@@ -213,30 +233,46 @@ After ALL tasks complete:
            How would you like to proceed? Options: (1) Retry manually, (2) Skip plan sync for this task, (3) Abort."
         - WAIT for user response before taking any action.
 
-    STEP 5 — RESEARCH EXISTING CODE
+    STEP 5 — LOAD SKILLS  [mandatory before any code is written]
+    - IDENTIFY the task's `ambient` field from `implementation_plan`.
+    - TRY: INVOKE SKILL "clean-code"
+      ON FAILURE: WARN "⚠️ clean-code skill not found — applying built-in standards."
+    - BASED ON ambient, conditionally invoke additional skill:
+      - ambient = `backend`      → TRY: INVOKE SKILL "api-patterns"
+      - ambient = `frontend`     → TRY: INVOKE SKILL "frontend-design"
+      - ambient = `database`     → TRY: INVOKE SKILL "database-design"
+      - ambient = `architecture` → TRY: INVOKE SKILL "architecture"
+      - ambient = `haskell`      → TRY: INVOKE SKILL "haskell-engineering"
+      - ambient = `devops`       → (no additional skill)
+      - ambient = unknown/missing → (no additional skill — apply clean-code only)
+      ON FAILURE for any additional skill: WARN inline, do NOT block.
+    - RESPOND: "📚 Skills loaded for task {task-number} (ambient: {ambient})."
+
+    STEP 6 — RESEARCH EXISTING CODE
     - USE #tool:search/codebase to find existing files related to this task.
     - USE #tool:read to read related files (up to 200 lines per read; use targeted ranges).
     - Understand patterns, dependencies, and interfaces before writing any code.
 
-    STEP 6 — IMPLEMENT
+    STEP 7 — IMPLEMENT
     - USE #tool:edit/editFiles to implement the task.
+    - Apply the guidelines from the skills loaded in STEP 5.
     - Follow SOLID, DRY, KISS principles.
     - Write unit tests for every new or modified unit.
     - Do NOT add code comments.
 
-    STEP 7 — BUILD VERIFICATION
+    STEP 8 — BUILD VERIFICATION
     - USE #tool:execute to run lint and build for the modified files.
       (Use `npm run lint` or equivalent; `npm run build` or equivalent.)
-    - IF errors or warnings: fix immediately before proceeding to STEP 6.
+    - IF errors or warnings: fix immediately before proceeding to STEP 9.
     - ⛔ GATE: IF errors persist after 2 retries → record as blocker in progress file
       and USE handoff "⬆️ Escalate to Tech Lead".
 
-    STEP 8 — MARK COMPLETED: PROGRESS FILE  [isolated response turn — no other tool calls in this turn]
+    STEP 9 — MARK COMPLETED: PROGRESS FILE  [isolated response turn — no other tool calls in this turn]
     - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation_progress.md`
       setting current task status to `completed`.
     - ⛔ This edit MUST be the ONLY operation in this response turn. Do NOT combine with any other tool call.
 
-    STEP 9 — VERIFY COMPLETED: PROGRESS FILE  [isolated response turn]
+    STEP 10 — VERIFY COMPLETED: PROGRESS FILE  [isolated response turn]
     - USE #tool:read to READ the progress file.
     - CONFIRM the task status is `completed`.
     - RESPOND: "✅ Progress file confirmed: task {task-number} is `completed`."
@@ -249,12 +285,12 @@ After ALL tasks complete:
            How would you like to proceed? Options: (1) Retry manually, (2) Skip progress tracking for this task, (3) Abort."
         - WAIT for user response before taking any action.
 
-    STEP 10 — MARK COMPLETED: IMPLEMENTATION PLAN  [isolated response turn — no other tool calls in this turn]
+    STEP 11 — MARK COMPLETED: IMPLEMENTATION PLAN  [isolated response turn — no other tool calls in this turn]
     - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation_plan.md`
       setting current task status to `completed`.
     - ⛔ This edit MUST be the ONLY operation in this response turn. Do NOT combine with any other tool call.
 
-    STEP 11 — VERIFY COMPLETED: IMPLEMENTATION PLAN  [isolated response turn]
+    STEP 12 — VERIFY COMPLETED: IMPLEMENTATION PLAN  [isolated response turn]
     - USE #tool:read to READ the implementation plan.
     - CONFIRM the task status is `completed`.
     - RESPOND: "✅ Implementation plan confirmed: task {task-number} is `completed`."
@@ -267,7 +303,7 @@ After ALL tasks complete:
            How would you like to proceed? Options: (1) Retry manually, (2) Skip plan sync for this task, (3) Abort."
         - WAIT for user response before taking any action.
 
-    STEP 12 — UPDATE TODO
+    STEP 13 — UPDATE TODO
     - USE #tool:todo to mark the current TODO item as completed.
 
   - ⛔ GATE CHECK — Phase 2 complete:
@@ -285,7 +321,7 @@ After ALL tasks complete:
     (Example: `npm run build && npm run lint` or equivalent.)
 
   - IF errors or warnings found:
-    - Fix them following the same STEP 3–4 loop.
+    - Fix them following the same STEP 6–7 loop.
     - Re-run the full build after each fix.
     - ⛔ GATE: IF errors persist after 2 retries → escalate via handoff "⬆️ Escalate to Tech Lead".
 
@@ -328,6 +364,7 @@ After ALL tasks complete:
 - Retry limit: 2 retries per file write (progress file or implementation plan). After 2 retries, USE #tool:interactive/ask_user to report the failure and ask how to proceed before taking any further action.
 - Context efficiency: prefer semantic search and file outlines over full-file reads.
 - If the implementation plan uses YAML format (legacy), treat it identically to Markdown format.
+- Skills are always loaded per-task immediately before IMPLEMENT — never at session start and never batched.
 </constraints>
 
 
