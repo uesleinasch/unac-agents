@@ -5,10 +5,6 @@ import { homedir } from 'os';
 const COPILOT_DIR = resolve(homedir(), '.copilot');
 const MAX_BACKUPS = 3;
 
-function getBackupBase() {
-  return resolve(homedir(), '.copilot-backup-');
-}
-
 function listBackups() {
   const home = homedir();
   return readdirSync(home)
@@ -38,7 +34,7 @@ export function backupIfNeeded() {
   pruneOldBackups();
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const backupPath = `${getBackupBase()}${timestamp}`;
+  const backupPath = resolve(homedir(), `.copilot-backup-${timestamp}`);
   renameSync(COPILOT_DIR, backupPath);
   return backupPath;
 }
