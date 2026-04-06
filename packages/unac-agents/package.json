@@ -1,0 +1,22 @@
+{
+  "name": "unac-agents",
+  "version": "1.0.0",
+  "description": "Install unac agents and skills into ~/.copilot for GitHub Copilot in VS Code",
+  "type": "module",
+  "bin": {
+    "unac-agents": "./bin/install.js"
+  },
+  "scripts": {
+    "prepare": "node scripts/sync-assets.js",
+    "release": "npm run prepare && npm publish"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["copilot", "agents", "skills", "vscode", "unac"],
+  "license": "MIT"
+}
