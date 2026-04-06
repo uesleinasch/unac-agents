@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+import { cpSync, rmSync, existsSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkgRoot = resolve(__dirname, '..');
+const repoRoot = resolve(pkgRoot, '../..');
+
+const sources = [
+  { src: resolve(repoRoot, 'agents'), dest: resolve(pkgRoot, 'assets/agents') },
+  { src: resolve(repoRoot, 'skills'), dest: resolve(pkgRoot, 'assets/skills') },
+];
+
+for (const { src, dest } of sources) {
+  if (!existsSync(src)) {
+    console.error(`Source not found: ${src}`);
+    process.exit(1);
+  }
+  if (existsSync(dest)) rmSync(dest, { recursive: true });
+  cpSync(src, dest, { recursive: true });
+  console.log(`Synced: ${src} → ${dest}`);
+}
