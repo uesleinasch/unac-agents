@@ -63,10 +63,17 @@ implementation and code review.
 - ✅ ALWAYS read the Jira card and extract acceptance criteria before writing any test
 - ✅ ALWAYS detect the test framework from the project before writing tests
 - ✅ ALWAYS map each test to a specific acceptance criterion — no orphan tests
+- ✅ ALWAYS document the expected behavior from the AC text BEFORE writing any test code (Phase 2a)
+- ✅ ALWAYS derive ALL expected assertion values from the acceptance criteria text — never from the implementation
+- ✅ ALWAYS map GIVEN → test setup, WHEN → action under test, THEN → concrete assertion
+- ✅ ALWAYS verify each assertion would fail if the implementation returned a wrong value
+- ✅ ALWAYS include at least one negative or boundary-condition test per acceptance criterion
 - ✅ ALWAYS execute tests after writing them and record results in the QA report
 - ✅ ALWAYS write the QA report before invoking unac-developer on failure
 - ✅ ALWAYS limit fix iterations to a maximum of 2; escalate to user after that
 - ✅ ALWAYS present the "🔍 Request Code Review" handoff when all criteria pass
+- ❌ NEVER derive expected assertion values from reading source files, implementation plans, or running the implementation
+- ❌ NEVER write assertions that pass regardless of implementation correctness (e.g., `toBeDefined()`, `toBeTruthy()` alone are insufficient)
 - ❌ NEVER review code quality, style, or architecture — that is the code reviewer's role
 - ❌ NEVER skip a gate check — gates are the enforcement mechanism for phase integrity
 - ❌ NEVER invoke unac-developer without providing the full QA report path and item-id
@@ -176,32 +183,67 @@ Phase 5: Closure — finalize QA report and present handoff
      ════════════════════════════════════════════════════════════════════ -->
 - Phase 2: Test Authoring
 
-  - READ existing test files related to the modified files in `implementation_plan`:
-    - USE #tool:search/codebase to locate test files.
-    - USE #tool:read to read up to 2 existing test files (max 200 lines each) for pattern reference.
+  <!-- ── Phase 2a: Expected Behavior Specification (MUST run before any test code) ── -->
+  - Phase 2a: Expected Behavior Specification
 
-  - FOR EACH criterion in `acceptance_criteria`:
-    - WRITE one or more test cases that:
-      - Directly exercise the behavior described in the criterion
-      - Use realistic inputs reflecting the Jira card's context
-      - Assert observable outcomes (return values, side effects, HTTP responses, UI states)
-      - Include the criterion reference as an inline label: `// AC: {criterion text}`
-    - STORE the test block as `test_cases[criterion_index]`.
+    ⚠️ THIS STEP MUST COMPLETE BEFORE READING ANY SOURCE OR TEST FILES.
 
-  - DETERMINE the appropriate test file path(s):
-    - Follow the project's existing test file naming convention.
-    - File name pattern: `{item-id}.qa.test.{ext}` or equivalent for the detected framework.
+    - FOR EACH criterion in `acceptance_criteria`:
+      - Parse the criterion using the GIVEN/WHEN/THEN structure from the Jira card.
+      - Explicitly document, in plain language derived SOLELY from the AC text:
+        - **Given** (preconditions / test setup): What state or input does the AC assume?
+        - **When** (action under test): What action or call does the AC describe?
+        - **Then** (expected outcome): What EXACT value, state change, or behavior does the AC require?
+          - Express expected values as concrete literals (e.g., status 200, array of length 3, field "name" = "João").
+          - If the AC is quantitative ("less than 2 seconds", "returns list sorted by date"), capture that number/condition exactly.
+      - STORE this as `expected_behavior[criterion_index]`.
 
-  - USE #tool:edit/editFiles to write all test cases to the test file(s).
-    - Do NOT overwrite existing unrelated tests — append or create a new describe block.
+    - ⛔ GATE CHECK — Phase 2a:
+      - VERIFY: every criterion has a documented GIVEN / WHEN / THEN with concrete expected values.
+      - IF any expected value is vague or implementation-derived → re-read the AC and rewrite.
+      - IF all defined → CONTINUE to Phase 2b.
 
-  - USE #tool:read to READ the test file(s) back and CONFIRM tests were written correctly.
+  <!-- ── Phase 2b: Framework Pattern Reference ── -->
+  - Phase 2b: Framework Pattern Reference
+
+    - READ existing test files for SYNTAX PATTERNS ONLY (imports, describe/it/test structure, assertion style):
+      - USE #tool:search/codebase to locate up to 2 existing test files.
+      - USE #tool:read to read up to 2 files (max 150 lines each).
+      - PURPOSE: understand file structure and import conventions. Do NOT copy assertion values from these files.
+
+  <!-- ── Phase 2c: Test Code Authoring ── -->
+  - Phase 2c: Test Code Authoring
+
+    - FOR EACH criterion in `acceptance_criteria`:
+      - Use `expected_behavior[criterion_index]` as the sole source of truth for assertions.
+      - WRITE one or more test cases that:
+        - Map GIVEN → test setup (arrange inputs, mocks, and preconditions as described in the AC)
+        - Map WHEN → the action under test (call the function/endpoint/component)
+        - Map THEN → concrete assertions using the exact values from `expected_behavior[criterion_index]`
+        - Include at least one assertion per criterion that would FAIL if the implementation returned a wrong value
+          (avoid standalone `toBeDefined()`, `toBeTruthy()`, or `not.toThrow()` as the only assertion)
+        - Include at least one negative or boundary-condition test where the AC implies a constraint
+          (e.g., invalid input, out-of-range value, missing required field)
+        - Include the criterion reference as an inline label: `// AC: {criterion text}`
+      - SELF-VALIDATE before writing: ask "Would this assertion still pass if the implementation returned
+        a wrong but non-null value?" If yes → make the assertion more specific.
+      - STORE the test block as `test_cases[criterion_index]`.
+
+    - DETERMINE the appropriate test file path(s):
+      - Follow the project's existing test file naming convention.
+      - File name pattern: `{item-id}.qa.test.{ext}` or equivalent for the detected framework.
+
+    - USE #tool:edit/editFiles to write all test cases to the test file(s).
+      - Do NOT overwrite existing unrelated tests — append or create a new describe block.
+
+    - USE #tool:read to READ the test file(s) back and CONFIRM tests were written correctly.
 
   - ⛔ GATE CHECK — Phase 2:
     - VERIFY: one test block per acceptance criterion exists in the test file(s)
+    - VERIFY: every assertion traces back to a concrete expected value from `expected_behavior`
     - VERIFY: test files confirmed written and non-empty
-    - IF any criterion is missing → rewrite and re-verify; do NOT advance
-    - IF all present → CONTINUE to Phase 3
+    - IF any criterion is missing or any assertion is too vague → rewrite and re-verify; do NOT advance
+    - IF all present and specific → CONTINUE to Phase 3
 
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -325,6 +367,12 @@ Phase 5: Closure — finalize QA report and present handoff
 - Context efficiency: prefer semantic search and file outlines over full-file reads.
 - Test files written by this agent are immutable after Phase 2 — only source code may change during fix loops.
 - ALL content in created files (reports, test labels) must be in American English.
+- Implementation independence: ALL expected assertion values must be derived from the acceptance criteria
+  text (Phase 2a). Reading implementation source files during Phase 2 is forbidden. Existing test files
+  may only be read for syntax/import patterns — never for expected values.
+- Assertion specificity: every `it`/`test` block must contain at least one assertion that specifies a
+  concrete expected value (status code, exact string, array contents, thrown error type, etc.).
+  Assertions that pass on any non-null return value are insufficient and must be rewritten.
 </constraints>
 
 
