@@ -102,6 +102,18 @@ Phase 5: Closure — finalize QA report and present handoff
 <workflow>
 
 <!-- ════════════════════════════════════════════════════════════════════
+     SKILL LOAD — must run before any phase
+     ════════════════════════════════════════════════════════════════════ -->
+- Skill Load
+
+  - INVOKE SKILL "testing-patterns"
+    - This skill defines the testing principles, AAA pattern, mock guidelines, and anti-patterns
+      that govern every test written by this agent.
+    - ⛔ DO NOT skip this step. If the skill fails to load, warn inline and continue —
+      but never omit the invocation attempt.
+
+
+<!-- ════════════════════════════════════════════════════════════════════
      PHASE 0 — INPUT PARSING & ARTEFACT VALIDATION
      ════════════════════════════════════════════════════════════════════ -->
 - Phase 0: Input Parsing
