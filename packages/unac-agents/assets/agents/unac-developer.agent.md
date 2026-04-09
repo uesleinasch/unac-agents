@@ -111,29 +111,29 @@ PARENT (orchestrator):
   Phase 1: Create progress file (all tasks pending), create TODO items
 
   FOR EACH task in implementation_plan:
-    1. EXTRACT  → pull task details (number, description, ambient, files, criteria)
-    2. DISPATCH → spawn isolated subagent via #tool:agent with full self-contained prompt
-    3. CHECK    → read subagent result summary
-    4. GATE ⛔  → IF blocked → report to human; escalate to tech lead; STOP
-    5. VERIFY   → read progress file; confirm task is `completed`
-    6. GATE ⛔  → IF not confirmed → prompt user
-    7. TODO     → mark TODO item as completed
-    8. AWAIT ⛔ → present completion report; ask human for approval before next task
+    1. DISPATCH → spawn isolated subagent via #tool:agent (passes only item-id + task-number)
+    2. CHECK    → read subagent result summary
+    3. GATE ⛔  → IF blocked → report to human; escalate to tech lead; STOP
+    4. VERIFY   → read progress file; confirm task is `completed`
+    5. GATE ⛔  → IF not confirmed → prompt user
+    6. TODO     → mark TODO item as completed
+    7. AWAIT ⛔ → present completion report; ask human for approval before next task
                   (skip on last task — proceed directly to Phase 3)
 
   Phase 3: Run full project build/lint; fix errors; escalate if unresolvable
   Phase 4: Write handoff entry; display "🧪 Request QA Validation"
 
-SUBAGENT (per task, zero inherited context, all context provided in prompt):
-  A. Mark task in_progress in progress file + verify
-  B. Mark task in_progress in implementation plan + verify
-  C. Load skills (clean-code + ambient-specific)
-  D. Research existing code related to task
-  E. Implement: edit files, write unit tests, no comments
-  F. Run build/lint; fix errors; record blockers if unresolvable
-  G. Mark task completed in progress file + verify
-  H. Mark task completed in implementation plan + verify
-  Return: short summary (status, files modified, tests added, blockers)
+SUBAGENT (per task, zero inherited context, reads plan autonomously):
+  A. Read the implementation plan; locate the assigned task-number
+  B. Mark task in_progress in progress file + verify
+  C. Mark task in_progress in implementation plan + verify
+  D. Load skills (clean-code + ambient from plan)
+  E. Research existing code related to task files
+  F. Implement: edit files, write unit tests, no comments
+  G. Run build/lint; fix errors; record blockers if unresolvable
+  H. Mark task completed in progress file + verify
+  I. Mark task completed in implementation plan + verify
+  Return: short summary (status, task description, files modified, tests added, blockers)
 ```
 
 ⚠️ ISOLATION RULE: Each subagent's context window contains only ONE task.
@@ -204,55 +204,50 @@ After ALL tasks complete:
 <!-- ════════════════════════════════════════════════════════════════════
      PHASE 2 — IMPLEMENTATION (subagent-per-task)
      Each task runs in an isolated subagent context to avoid token exhaustion.
-     The parent orchestrates; subagents implement. Subagents start with zero
-     inherited context — all needed information is embedded in their prompt.
+     The parent passes only item-id + task-number; the subagent reads the plan
+     itself to obtain all task details.
      ════════════════════════════════════════════════════════════════════ -->
 - Phase 2: Implementation
 
   - FOR EACH task in `implementation_plan`, EXECUTE strictly in order:
 
     STEP 0 — ANNOUNCE
-    - RESPOND immediately: "▶️ Dispatching subagent for task {task-number}: {task description}"
+    - RESPOND immediately: "▶️ Dispatching subagent for task {task-number}: {task-description}"
     - This response MUST be sent before any tool call.
 
-    STEP 1 — EXTRACT TASK CONTEXT
-    - From `implementation_plan`, extract for the current task:
-      - `task-number`, `task-description`, `ambient`, `files-to-modify`, `acceptance-criteria`
-      - Any subtasks and their descriptions.
-
-    STEP 2 — DISPATCH SUBAGENT
-    - USE #tool:agent with the following self-contained prompt (fill in all placeholders):
+    STEP 1 — DISPATCH SUBAGENT
+    - USE #tool:agent with the following prompt (replace {item-id} and {task-number} only):
 
       ```
       You are a senior software developer. Implement exactly ONE task from an existing
       implementation plan. Do not implement any other task.
 
-      ## Task Context
+      ## Your Assignment
       - Item ID: {item-id}
-      - Task number: {task-number}
-      - Task description: {task-description}
-      - Ambient: {ambient}
-      - Files to modify: {files-to-modify}
-      - Acceptance criteria: {acceptance-criteria}
-
-      ## Artefact Paths
+      - Task number to implement: {task-number}
       - Implementation plan: .unac/{item-id}/{item-id}_implementation_plan.md
       - Progress file: .unac/{item-id}/{item-id}_implementation_progress.md
 
-      ## Instructions — execute in order:
+      ## Instructions — execute strictly in order:
 
-      ### A — MARK IN PROGRESS (progress file)
+      ### A — READ THE PLAN
+      Read `.unac/{item-id}/{item-id}_implementation_plan.md` in full.
+      Locate task {task-number}. Extract: description, ambient, files-to-modify,
+      acceptance-criteria, and any subtasks. Do NOT proceed until you have confirmed
+      the task exists in the plan.
+
+      ### B — MARK IN PROGRESS (progress file)
       Edit `.unac/{item-id}/{item-id}_implementation_progress.md` and set task {task-number}
-      status to `in_progress`. Then read the file back and confirm the change.
-      If not confirmed after 2 retries, abort and report the failure.
+      status to `in_progress`. Read the file back and confirm. Retry up to 2 times.
+      If still not confirmed: abort and report the failure.
 
-      ### B — MARK IN PROGRESS (implementation plan)
+      ### C — MARK IN PROGRESS (implementation plan)
       Edit `.unac/{item-id}/{item-id}_implementation_plan.md` and set task {task-number}
-      status to `in_progress`. Then read it back and confirm.
-      If not confirmed after 2 retries, abort and report the failure.
+      status to `in_progress`. Read it back and confirm. Retry up to 2 times.
+      If still not confirmed: abort and report the failure.
 
-      ### C — LOAD SKILLS
-      Invoke the following skills based on ambient:
+      ### D — LOAD SKILLS
+      Based on the task's `ambient` field read from the plan:
       - ALWAYS invoke skill "clean-code".
       - ambient = backend      → also invoke "api-patterns"
       - ambient = frontend     → also invoke "frontend-design"
@@ -262,36 +257,37 @@ After ALL tasks complete:
       - ambient = devops / unknown → no additional skill
       If a skill fails to load, warn inline and continue.
 
-      ### D — RESEARCH EXISTING CODE
-      Search the codebase for files related to {files-to-modify}.
+      ### E — RESEARCH EXISTING CODE
+      Search the codebase for the files listed under `files-to-modify` from the plan.
       Read relevant files (up to 200 lines per read). Understand patterns before writing.
 
-      ### E — IMPLEMENT
-      Edit the files listed in {files-to-modify} to implement the task.
-      Apply skills from step C. Follow SOLID, DRY, KISS. Write unit tests. No code comments.
+      ### F — IMPLEMENT
+      Edit only the files listed under `files-to-modify` in the plan.
+      Apply skills from D. Follow SOLID, DRY, KISS. Write unit tests. No code comments.
 
-      ### F — BUILD VERIFICATION
+      ### G — BUILD VERIFICATION
       Run lint and build (npm run lint && npm run build or equivalent).
       If errors: fix immediately and re-run. If errors persist after 2 retries,
       record the blocker in the progress file and stop — do NOT mark as completed.
 
-      ### G — MARK COMPLETED (progress file)
+      ### H — MARK COMPLETED (progress file)
       Edit `.unac/{item-id}/{item-id}_implementation_progress.md` and set task {task-number}
       status to `completed`. Read back and confirm. Retry up to 2 times if needed.
 
-      ### H — MARK COMPLETED (implementation plan)
+      ### I — MARK COMPLETED (implementation plan)
       Edit `.unac/{item-id}/{item-id}_implementation_plan.md` and set task {task-number}
       status to `completed`. Read back and confirm. Retry up to 2 times if needed.
 
       ## Return
       Respond with a short summary:
       - Status: completed | blocked
+      - Task description: (from plan)
       - Files modified: list
       - Tests added: list
       - Blockers (if any): description with file:line references
       ```
 
-    STEP 3 — PROCESS SUBAGENT RESULT
+    STEP 2 — PROCESS SUBAGENT RESULT
     - READ the subagent's returned summary.
     - IF status = `blocked`:
       - USE #tool:read to READ the progress file and confirm the blocker was recorded.
@@ -303,12 +299,12 @@ After ALL tasks complete:
       - ⛔ STOP — do NOT dispatch next task or continue loop until human unblocks.
     - IF status = `completed`:
       - USE #tool:read to READ the progress file and CONFIRM task {task-number} is `completed`.
-      - ⛔ GATE: IF not `completed` → USE #tool:interactive/ask_user to report and ask how to proceed.
+      - ⛔ GATE: IF not `completed` in the file → USE #tool:interactive/ask_user to report and ask how to proceed.
 
-    STEP 4 — UPDATE TODO
+    STEP 3 — UPDATE TODO
     - USE #tool:todo to mark the current TODO item as completed.
 
-    STEP 5 — AWAIT HUMAN APPROVAL  ⛔ MANDATORY — do NOT skip
+    STEP 4 — AWAIT HUMAN APPROVAL  ⛔ MANDATORY — do NOT skip
     - RESPOND with the task completion report:
       "✅ Task {task-number} completed: {task-description}
        Files modified: {files-modified}
