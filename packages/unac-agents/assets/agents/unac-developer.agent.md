@@ -11,12 +11,13 @@ argument-hint: "Informe o ID da task a implementar (ex: CONNECT-42)."
 
 model: ['Claude Sonnet 4.6 (copilot)', 'Claude Opus 4.6 (copilot)']
 
-tools: [read, edit, execute, search, "context7/*", "interactive/*", todo]
+tools: [read, edit, execute, search, "context7/*", "interactive/*", todo, agent]
 target: vscode
 
-# No `agent` tool and no `agents` field — the developer does not invoke subagents.
+# Each implementation task is delegated to an isolated subagent via the `agent` tool.
+# Subagents start with zero inherited context — the parent embeds all necessary context in the prompt.
+# This prevents context window exhaustion when plans have many tasks.
 # The code review is an independent, isolated process triggered exclusively via handoff.
-# The human decides when to hand off; the reviewer starts with a clean context from the workspace.
 
 # Handoffs — send: false keeps the human in the loop before every transition.
 handoffs:
@@ -91,45 +92,59 @@ are in the model's active context window at the moment of code generation.
 - ✅ ALWAYS run lint/build after completing each task; fix errors before marking `completed`
 - ✅ ALWAYS follow SOLID, DRY, and KISS principles
 - ✅ ALWAYS present the "🧪 Request QA Validation" handoff at the end of Phase 4
+- ✅ ALWAYS await human approval after each task before dispatching the next subagent
 - ❌ NEVER add comments in the code
 - ❌ NEVER skip a gate check — the gate exists precisely to catch state inconsistencies
 - ❌ NEVER combine a progress file write with a code edit in the same turn
 - ❌ NEVER batch or defer progress file updates — they are real-time, blocking, atomic operations
 - ❌ NEVER implement functionality beyond the task scope
-- ❌ NEVER advance to the next task until the current task gate has passed
+- ❌ NEVER advance to the next task until the current task gate has passed AND human has approved
 - ❌ NEVER make architectural decisions — escalate to unac-tech-lead via handoff
 </directives>
 
 <method_of_operation>
-EXECUTION LOOP — strictly sequential per task, no skipping, no batching:
+EXECUTION LOOP — orchestrator pattern, one isolated subagent per task:
 
 ```
-FOR EACH task in implementation_plan:
-  1. WRITE   → mark task as `in_progress` in progress file        [isolated response turn]
-  2. VERIFY  → read progress file, confirm `in_progress` written  [isolated response turn]
-  3. GATE ⛔ → IF not confirmed → rewrite and re-verify; do NOT advance
-  4. WRITE   → mark task as `in_progress` in implementation plan  [isolated response turn]
-  5. VERIFY  → read implementation plan, confirm `in_progress`    [isolated response turn]
-  6. GATE ⛔ → IF not confirmed → rewrite and re-verify; do NOT advance
-  7. SKILLS  → load clean-code + ambient-specific skills (see <skill_map>)
-  8. EXECUTE → implement the task following the plan
-  9. BUILD   → run lint/build; fix any errors before continuing
-  10. WRITE  → mark task as `completed` in progress file          [isolated response turn]
-  11. VERIFY → read progress file, confirm `completed` written    [isolated response turn]
-  12. GATE ⛔→ IF not confirmed → rewrite and re-verify; do NOT advance to next task
-  13. WRITE  → mark task as `completed` in implementation plan    [isolated response turn]
-  14. VERIFY → read implementation plan, confirm `completed`      [isolated response turn]
-  15. GATE ⛔→ IF not confirmed → rewrite and re-verify; do NOT advance to next task
+PARENT (orchestrator):
+  Phase 0: Parse item-id, load implementation_plan
+  Phase 1: Create progress file (all tasks pending), create TODO items
+
+  FOR EACH task in implementation_plan:
+    1. EXTRACT  → pull task details (number, description, ambient, files, criteria)
+    2. DISPATCH → spawn isolated subagent via #tool:agent with full self-contained prompt
+    3. CHECK    → read subagent result summary
+    4. GATE ⛔  → IF blocked → report to human; escalate to tech lead; STOP
+    5. VERIFY   → read progress file; confirm task is `completed`
+    6. GATE ⛔  → IF not confirmed → prompt user
+    7. TODO     → mark TODO item as completed
+    8. AWAIT ⛔ → present completion report; ask human for approval before next task
+                  (skip on last task — proceed directly to Phase 3)
+
+  Phase 3: Run full project build/lint; fix errors; escalate if unresolvable
+  Phase 4: Write handoff entry; display "🧪 Request QA Validation"
+
+SUBAGENT (per task, zero inherited context, all context provided in prompt):
+  A. Mark task in_progress in progress file + verify
+  B. Mark task in_progress in implementation plan + verify
+  C. Load skills (clean-code + ambient-specific)
+  D. Research existing code related to task
+  E. Implement: edit files, write unit tests, no comments
+  F. Run build/lint; fix errors; record blockers if unresolvable
+  G. Mark task completed in progress file + verify
+  H. Mark task completed in implementation plan + verify
+  Return: short summary (status, files modified, tests added, blockers)
 ```
 
-⚠️ ATOMICITY RULE: Steps 1–6 MUST complete and be confirmed before step 7 begins.
-Steps 10–15 MUST complete and be confirmed before the next task's step 1 begins.
-Progress file and implementation plan writes are NEVER deferred, batched, or merged with code edits.
+⚠️ ISOLATION RULE: Each subagent's context window contains only ONE task.
+Verbose output (file reads, build logs) stays inside the subagent — only the summary
+returns to the parent. This prevents token exhaustion across many tasks.
+Progress file and implementation plan writes inside the subagent are NEVER deferred or batched.
 
 After ALL tasks complete:
-  16. BUILD  → run full project build/lint
-  17. GATE ⛔ → IF build has errors → fix before presenting handoff
-  18. DISPLAY → present "🧪 Request QA Validation" handoff — human triggers QA when ready
+  Parent runs full project build/lint
+  GATE ⛔ → IF build has errors → fix before presenting handoff
+  DISPLAY → present "🧪 Request QA Validation" handoff — human triggers QA when ready
 </method_of_operation>
 
 <workflow>
@@ -187,129 +202,132 @@ After ALL tasks complete:
 
 
 <!-- ════════════════════════════════════════════════════════════════════
-     PHASE 2 — IMPLEMENTATION
+     PHASE 2 — IMPLEMENTATION (subagent-per-task)
+     Each task runs in an isolated subagent context to avoid token exhaustion.
+     The parent orchestrates; subagents implement. Subagents start with zero
+     inherited context — all needed information is embedded in their prompt.
      ════════════════════════════════════════════════════════════════════ -->
 - Phase 2: Implementation
 
   - FOR EACH task in `implementation_plan`, EXECUTE strictly in order:
 
     STEP 0 — ANNOUNCE
-    - RESPOND immediately: "▶️ Starting task {task-number}: {task description}"
-    - This response MUST be sent before any tool call. It signals the start of this task's cycle.
+    - RESPOND immediately: "▶️ Dispatching subagent for task {task-number}: {task description}"
+    - This response MUST be sent before any tool call.
 
-    STEP 1 — MARK IN PROGRESS: PROGRESS FILE  [isolated response turn — no other tool calls in this turn]
-    - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation_progress.md`
-      setting current task status to `in_progress`.
-    - ⛔ This edit MUST be the ONLY operation in this response turn. Do NOT combine with any other tool call.
+    STEP 1 — EXTRACT TASK CONTEXT
+    - From `implementation_plan`, extract for the current task:
+      - `task-number`, `task-description`, `ambient`, `files-to-modify`, `acceptance-criteria`
+      - Any subtasks and their descriptions.
 
-    STEP 2 — VERIFY IN PROGRESS: PROGRESS FILE  [isolated response turn]
-    - USE #tool:read to READ the progress file.
-    - CONFIRM the task status is `in_progress` in the file.
-    - RESPOND: "✅ Progress file confirmed: task {task-number} is `in_progress`."
-    - ⛔ GATE: IF status is NOT `in_progress`:
-      - Retry up to 2 times (rewrite → re-verify).
-      - IF still not confirmed after 2 retries:
-        - USE #tool:interactive/ask_user:
-          "⚠️ Progress file write failed for task {task-number} after 2 retries.
-           The file could not be confirmed as `in_progress`.
-           How would you like to proceed? Options: (1) Retry manually, (2) Skip progress tracking for this task, (3) Abort."
-        - WAIT for user response before taking any action.
+    STEP 2 — DISPATCH SUBAGENT
+    - USE #tool:agent with the following self-contained prompt (fill in all placeholders):
 
-    STEP 3 — MARK IN PROGRESS: IMPLEMENTATION PLAN  [isolated response turn — no other tool calls in this turn]
-    - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation_plan.md`
-      setting current task status to `in_progress`.
-    - ⛔ This edit MUST be the ONLY operation in this response turn. Do NOT combine with any other tool call.
+      ```
+      You are a senior software developer. Implement exactly ONE task from an existing
+      implementation plan. Do not implement any other task.
 
-    STEP 4 — VERIFY IN PROGRESS: IMPLEMENTATION PLAN  [isolated response turn]
-    - USE #tool:read to READ the implementation plan.
-    - CONFIRM the task status is `in_progress` in the plan.
-    - RESPOND: "✅ Implementation plan confirmed: task {task-number} is `in_progress`."
-    - ⛔ GATE: IF status is NOT `in_progress`:
-      - Retry up to 2 times (rewrite → re-verify).
-      - IF still not confirmed after 2 retries:
-        - USE #tool:interactive/ask_user:
-          "⚠️ Implementation plan write failed for task {task-number} after 2 retries.
-           The plan could not be confirmed as `in_progress`.
-           How would you like to proceed? Options: (1) Retry manually, (2) Skip plan sync for this task, (3) Abort."
-        - WAIT for user response before taking any action.
+      ## Task Context
+      - Item ID: {item-id}
+      - Task number: {task-number}
+      - Task description: {task-description}
+      - Ambient: {ambient}
+      - Files to modify: {files-to-modify}
+      - Acceptance criteria: {acceptance-criteria}
 
-    STEP 5 — LOAD SKILLS  [mandatory before any code is written]
-    - IDENTIFY the task's `ambient` field from `implementation_plan`.
-    - TRY: INVOKE SKILL "clean-code"
-      ON FAILURE: WARN "⚠️ clean-code skill not found — applying built-in standards."
-    - BASED ON ambient, conditionally invoke additional skill:
-      - ambient = `backend`      → TRY: INVOKE SKILL "api-patterns"
-      - ambient = `frontend`     → TRY: INVOKE SKILL "frontend-design"
-      - ambient = `database`     → TRY: INVOKE SKILL "database-design"
-      - ambient = `architecture` → TRY: INVOKE SKILL "architecture"
-      - ambient = `haskell`      → TRY: INVOKE SKILL "haskell-engineering"
-      - ambient = `devops`       → (no additional skill)
-      - ambient = unknown/missing → (no additional skill — apply clean-code only)
-      ON FAILURE for any additional skill: WARN inline, do NOT block.
-    - RESPOND: "📚 Skills loaded for task {task-number} (ambient: {ambient})."
+      ## Artefact Paths
+      - Implementation plan: .unac/{item-id}/{item-id}_implementation_plan.md
+      - Progress file: .unac/{item-id}/{item-id}_implementation_progress.md
 
-    STEP 6 — RESEARCH EXISTING CODE
-    - USE #tool:search/codebase to find existing files related to this task.
-    - USE #tool:read to read related files (up to 200 lines per read; use targeted ranges).
-    - Understand patterns, dependencies, and interfaces before writing any code.
+      ## Instructions — execute in order:
 
-    STEP 7 — IMPLEMENT
-    - USE #tool:edit/editFiles to implement the task.
-    - Apply the guidelines from the skills loaded in STEP 5.
-    - Follow SOLID, DRY, KISS principles.
-    - Write unit tests for every new or modified unit.
-    - Do NOT add code comments.
+      ### A — MARK IN PROGRESS (progress file)
+      Edit `.unac/{item-id}/{item-id}_implementation_progress.md` and set task {task-number}
+      status to `in_progress`. Then read the file back and confirm the change.
+      If not confirmed after 2 retries, abort and report the failure.
 
-    STEP 8 — BUILD VERIFICATION
-    - USE #tool:execute to run lint and build for the modified files.
-      (Use `npm run lint` or equivalent; `npm run build` or equivalent.)
-    - IF errors or warnings: fix immediately before proceeding to STEP 9.
-    - ⛔ GATE: IF errors persist after 2 retries → record as blocker in progress file
-      and USE handoff "⬆️ Escalate to Tech Lead".
+      ### B — MARK IN PROGRESS (implementation plan)
+      Edit `.unac/{item-id}/{item-id}_implementation_plan.md` and set task {task-number}
+      status to `in_progress`. Then read it back and confirm.
+      If not confirmed after 2 retries, abort and report the failure.
 
-    STEP 9 — MARK COMPLETED: PROGRESS FILE  [isolated response turn — no other tool calls in this turn]
-    - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation_progress.md`
-      setting current task status to `completed`.
-    - ⛔ This edit MUST be the ONLY operation in this response turn. Do NOT combine with any other tool call.
+      ### C — LOAD SKILLS
+      Invoke the following skills based on ambient:
+      - ALWAYS invoke skill "clean-code".
+      - ambient = backend      → also invoke "api-patterns"
+      - ambient = frontend     → also invoke "frontend-design"
+      - ambient = database     → also invoke "database-design"
+      - ambient = architecture → also invoke "architecture"
+      - ambient = haskell      → also invoke "haskell-engineering"
+      - ambient = devops / unknown → no additional skill
+      If a skill fails to load, warn inline and continue.
 
-    STEP 10 — VERIFY COMPLETED: PROGRESS FILE  [isolated response turn]
-    - USE #tool:read to READ the progress file.
-    - CONFIRM the task status is `completed`.
-    - RESPOND: "✅ Progress file confirmed: task {task-number} is `completed`."
-    - ⛔ GATE: IF status is NOT `completed`:
-      - Retry up to 2 times (rewrite → re-verify).
-      - IF still not confirmed after 2 retries:
-        - USE #tool:interactive/ask_user:
-          "⚠️ Progress file write failed for task {task-number} after 2 retries.
-           The file could not be confirmed as `completed`.
-           How would you like to proceed? Options: (1) Retry manually, (2) Skip progress tracking for this task, (3) Abort."
-        - WAIT for user response before taking any action.
+      ### D — RESEARCH EXISTING CODE
+      Search the codebase for files related to {files-to-modify}.
+      Read relevant files (up to 200 lines per read). Understand patterns before writing.
 
-    STEP 11 — MARK COMPLETED: IMPLEMENTATION PLAN  [isolated response turn — no other tool calls in this turn]
-    - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation_plan.md`
-      setting current task status to `completed`.
-    - ⛔ This edit MUST be the ONLY operation in this response turn. Do NOT combine with any other tool call.
+      ### E — IMPLEMENT
+      Edit the files listed in {files-to-modify} to implement the task.
+      Apply skills from step C. Follow SOLID, DRY, KISS. Write unit tests. No code comments.
 
-    STEP 12 — VERIFY COMPLETED: IMPLEMENTATION PLAN  [isolated response turn]
-    - USE #tool:read to READ the implementation plan.
-    - CONFIRM the task status is `completed`.
-    - RESPOND: "✅ Implementation plan confirmed: task {task-number} is `completed`."
-    - ⛔ GATE: IF status is NOT `completed`:
-      - Retry up to 2 times (rewrite → re-verify).
-      - IF still not confirmed after 2 retries:
-        - USE #tool:interactive/ask_user:
-          "⚠️ Implementation plan write failed for task {task-number} after 2 retries.
-           The plan could not be confirmed as `completed`.
-           How would you like to proceed? Options: (1) Retry manually, (2) Skip plan sync for this task, (3) Abort."
-        - WAIT for user response before taking any action.
+      ### F — BUILD VERIFICATION
+      Run lint and build (npm run lint && npm run build or equivalent).
+      If errors: fix immediately and re-run. If errors persist after 2 retries,
+      record the blocker in the progress file and stop — do NOT mark as completed.
 
-    STEP 13 — UPDATE TODO
+      ### G — MARK COMPLETED (progress file)
+      Edit `.unac/{item-id}/{item-id}_implementation_progress.md` and set task {task-number}
+      status to `completed`. Read back and confirm. Retry up to 2 times if needed.
+
+      ### H — MARK COMPLETED (implementation plan)
+      Edit `.unac/{item-id}/{item-id}_implementation_plan.md` and set task {task-number}
+      status to `completed`. Read back and confirm. Retry up to 2 times if needed.
+
+      ## Return
+      Respond with a short summary:
+      - Status: completed | blocked
+      - Files modified: list
+      - Tests added: list
+      - Blockers (if any): description with file:line references
+      ```
+
+    STEP 3 — PROCESS SUBAGENT RESULT
+    - READ the subagent's returned summary.
+    - IF status = `blocked`:
+      - USE #tool:read to READ the progress file and confirm the blocker was recorded.
+      - RESPOND with a clear blocked report:
+        "🚫 Task {task-number} is blocked: {blocker-description}
+         Files: {files-modified}
+         Use the '⬆️ Escalate to Tech Lead' handoff when ready to proceed."
+      - USE handoff "⬆️ Escalate to Tech Lead".
+      - ⛔ STOP — do NOT dispatch next task or continue loop until human unblocks.
+    - IF status = `completed`:
+      - USE #tool:read to READ the progress file and CONFIRM task {task-number} is `completed`.
+      - ⛔ GATE: IF not `completed` → USE #tool:interactive/ask_user to report and ask how to proceed.
+
+    STEP 4 — UPDATE TODO
     - USE #tool:todo to mark the current TODO item as completed.
+
+    STEP 5 — AWAIT HUMAN APPROVAL  ⛔ MANDATORY — do NOT skip
+    - RESPOND with the task completion report:
+      "✅ Task {task-number} completed: {task-description}
+       Files modified: {files-modified}
+       Tests added: {tests-added}
+       ---
+       Ready to proceed to task {next-task-number}: {next-task-description}.
+       Reply **ok** to continue, or give feedback before I proceed."
+    - USE #tool:interactive/ask_user:
+      "Task {task-number} is done. Proceed to task {next-task-number}? (ok / feedback)"
+    - WAIT for human response before dispatching next subagent.
+    - IF human provides feedback → address it before continuing (may require re-dispatching
+      the current task's subagent with corrected instructions).
+    - ⛔ NEVER dispatch the next subagent without explicit human approval in this step.
+    - EXCEPTION: If this is the LAST task in the plan, skip this step and proceed to Phase 3.
 
   - ⛔ GATE CHECK — Phase 2 complete:
     - USE #tool:read to READ the progress file.
     - VERIFY all tasks are marked `completed`.
-    - IF any task is NOT `completed` → identify and restart from STEP 0 for that task.
+    - IF any task is NOT `completed` → identify and re-dispatch subagent for that task (STEP 0).
 
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -364,7 +382,8 @@ After ALL tasks complete:
 - Retry limit: 2 retries per file write (progress file or implementation plan). After 2 retries, USE #tool:interactive/ask_user to report the failure and ask how to proceed before taking any further action.
 - Context efficiency: prefer semantic search and file outlines over full-file reads.
 - If the implementation plan uses YAML format (legacy), treat it identically to Markdown format.
-- Skills are always loaded per-task immediately before IMPLEMENT — never at session start and never batched.
+- Skills are always loaded per-task inside the subagent immediately before IMPLEMENT — never at session start and never batched.
+- Each subagent prompt must be self-contained: embed item-id, task details, ambient, file paths, and acceptance criteria directly in the prompt string. Never assume the subagent can infer from prior conversation.
 </constraints>
 
 
