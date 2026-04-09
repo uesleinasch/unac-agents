@@ -1,6 +1,6 @@
 {
   "name": "unac-agents",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Install unac agents and skills into ~/.copilot for GitHub Copilot in VS Code",
   "type": "module",
   "bin": {
@@ -18,7 +18,13 @@
   "engines": {
     "node": ">=18"
   },
-  "keywords": ["copilot", "agents", "skills", "vscode", "unac"],
+  "keywords": [
+    "copilot",
+    "agents",
+    "skills",
+    "vscode",
+    "unac"
+  ],
   "license": "MIT",
   "author": "Ueslei Nascimento"
 }
