@@ -3,6 +3,7 @@ import readline from 'readline';
 import { printBanner, createSpinner, printBackup, printSuccess, printError, printDryRun, printAborted } from '../src/ui.js';
 import { backupIfNeeded } from '../src/backup.js';
 import { copyAssets, listAssets } from '../src/copy.js';
+import { installMcp } from '../src/mcp.js';
 
 const [major] = process.versions.node.split('.').map(Number);
 if (major < 18) {
@@ -67,6 +68,17 @@ try {
 }
 
 printSuccess(counts);
+
+// Phase 3: install local interactive-mcp
+const mcpSpinner = createSpinner('Installing local interactive-mcp server...');
+mcpSpinner.start();
+try {
+  installMcp();
+  mcpSpinner.succeed('interactive-mcp installed and VS Code mcp.json updated.');
+} catch (err) {
+  mcpSpinner.fail('interactive-mcp installation failed (non-fatal).');
+  printError(handleError(err));
+}
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 

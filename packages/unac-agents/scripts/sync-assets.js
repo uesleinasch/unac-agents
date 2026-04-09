@@ -10,14 +10,22 @@ const repoRoot = resolve(pkgRoot, '../..');
 const sources = [
   { src: resolve(repoRoot, 'agents'), dest: resolve(pkgRoot, 'assets/agents') },
   { src: resolve(repoRoot, 'skills'), dest: resolve(pkgRoot, 'assets/skills') },
+  {
+    src: resolve(repoRoot, 'packages/interactive-mcp'),
+    dest: resolve(pkgRoot, 'assets/mcp/interactive-mcp'),
+    exclude: ['node_modules', '.gitignore'],
+  },
 ];
 
-for (const { src, dest } of sources) {
+for (const { src, dest, exclude = [] } of sources) {
   if (!existsSync(src)) {
     console.error(`Source not found: ${src}`);
     process.exit(1);
   }
   if (existsSync(dest)) rmSync(dest, { recursive: true });
-  cpSync(src, dest, { recursive: true });
+  cpSync(src, dest, {
+    recursive: true,
+    filter: (srcPath) => !exclude.some((ex) => srcPath.includes(`/${ex}`)),
+  });
   console.log(`Synced: ${src} → ${dest}`);
 }

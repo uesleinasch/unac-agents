@@ -3,3 +3,6 @@
 .switchboard/kanban.db
 .switchboard/*.db-shm
 .switchboard/*.db-wal
+
+# Node modules — never commit
+node_modules/
