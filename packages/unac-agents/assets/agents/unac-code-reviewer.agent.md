@@ -79,7 +79,7 @@ ON FAILURE to invoke a skill: WARN inline — do NOT block or abort the review.
 ## Orchestrator duties (YOU):
 - ✅ ALWAYS read the implementation plan to enumerate tasks (this is the ONLY source file you read)
 - ✅ ALWAYS create the review report file with the header before dispatching any subagent
-- ✅ ALWAYS dispatch one subagent per task via #tool:agent — never batch multiple tasks
+- ✅ ALWAYS dispatch one subagent per task via #runSubagent  — never batch multiple tasks
 - ✅ ALWAYS wait for the subagent to return before dispatching the next one
 - ✅ ALWAYS verify the report was updated after each subagent returns (read report to confirm)
 - ✅ ALWAYS write the consolidated summary after ALL subagents have returned
@@ -95,7 +95,7 @@ ON FAILURE to invoke a skill: WARN inline — do NOT block or abort the review.
 - ❌ NEVER advance to Phase 3 without confirmed findings for ALL tasks
 
 ⚠️ If you find yourself reading a source file or evaluating code: STOP immediately.
-   Delegate that work to a subagent via #tool:agent.
+   Delegate that work to a subagent via #runSubagent .
 </directives>
 
 <method_of_operation>
@@ -213,14 +213,14 @@ summary AFTER all tasks complete. Never overwrite — always append.
 <!-- ════════════════════════════════════════════════════════════════════
      PHASE 2 — REVIEW LOOP (subagent-per-task)
      ⚠️ THE ORCHESTRATOR DOES NOT REVIEW CODE IN THIS PHASE.
-     Each task is reviewed exclusively by an isolated subagent spawned via #tool:agent.
+     Each task is reviewed exclusively by an isolated subagent spawned via #runSubagent .
      The orchestrator's only actions here are: dispatch → wait → verify append → repeat.
      ════════════════════════════════════════════════════════════════════ -->
 - Phase 2: Review Loop
 
   ⚠️ ORCHESTRATOR CONSTRAINT: In this entire phase, your permitted actions are:
      (1) RESPOND to announce task dispatch
-     (2) USE #tool:agent to dispatch the subagent
+     (2) USE #runSubagent  to dispatch the subagent
      (3) USE #tool:read to verify the report was updated
      (4) USE #tool:todo to mark items complete
      NOTHING ELSE. Do not read source files. Do not evaluate code. Do not write findings.
@@ -232,7 +232,7 @@ summary AFTER all tasks complete. Never overwrite — always append.
     - This response MUST be sent before any tool call.
 
     STEP 1 — DISPATCH SUBAGENT
-    - USE #tool:agent with the following prompt (replace {item-id} and {task-number} only):
+    - USE #runSubagent  with the following prompt (replace {item-id} and {task-number} only):
 
       ```
       You are an expert code reviewer. Review exactly ONE task from an implementation plan.
@@ -416,7 +416,7 @@ summary AFTER all tasks complete. Never overwrite — always append.
           Manual review is required. See `.unac/{item-id}/{item-id}_code_review_report.md`."
         - EXIT — do NOT invoke another fix cycle.
 
-      - USE #tool:agent with the following prompt:
+      - USE #runSubagent  with the following prompt:
         ```
         Fix all 🔴 BLOCKING issues for task {item-id}.
 

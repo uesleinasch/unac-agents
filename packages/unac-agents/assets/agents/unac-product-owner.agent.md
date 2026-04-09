@@ -93,7 +93,7 @@ handoffs:
 
 ## Phase 2 — Jira Card Creation (Subagent)
 
-- RUN #tool:agent/runSubagent `unac-jira-maker` with the following explicit context:
+- RUN #runSubagent  `unac-jira-maker` with the following explicit context:
 
   ```
   item-id: {item-id}
