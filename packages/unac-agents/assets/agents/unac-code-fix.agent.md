@@ -214,7 +214,7 @@ Each subagent targets only its assigned issue. The parent writes the final summa
     - This response MUST be sent before any tool call.
 
     STEP 1 — DISPATCH SUBAGENT
-    - USE #runSubagent with the following prompt (replace {item-id} and {issue-index} only):
+    - USE #runSubagent with the following prompt (replace {item-id}, {issue-index}, and {fix_iteration}):
 
       ```
       You are a surgical code correction specialist. Fix exactly ONE blocking issue
@@ -282,20 +282,37 @@ Each subagent targets only its assigned issue. The parent writes the final summa
       Read the file back and confirm the update is present (retry up to 2 times).
 
       ## Return
-      Respond with a short summary:
-      - Issue index: {issue-index}
-      - File: path:line
-      - Status: resolved | escalated | failed
-      - Fix applied: brief description (if resolved)
-      - Build result: ✅ passed | ❌ failed
-      - Escalation reason: (if escalated)
+      Respond with a structured summary using EXACTLY this format so the orchestrator can parse it:
+
+      SUBAGENT_RESULT_START
+      issue_index: {issue-index}
+      file: path:line
+      status: resolved | escalated | failed
+      fix_applied: brief description (if resolved, else "n/a")
+      build_result: passed | failed | skipped
+      escalation_reason: reason (if escalated, else "n/a")
+      SUBAGENT_RESULT_END
+
+      Do not omit any field. Use exactly these keys. This is how the orchestrator confirms task completion.
       ```
 
     STEP 2 — PROCESS SUBAGENT RESULT
-    - READ the subagent's returned summary.
+    - PARSE the subagent's returned summary using the SUBAGENT_RESULT_START/END block.
+      Extract: issue_index, status, fix_applied, build_result, escalation_reason.
+    - VERIFY: subagent returned `status` as one of resolved / escalated / failed.
+      IF the block is missing or status is absent:
+        - Log: "⚠️ Subagent did not return a structured result for issue {issue-index}."
+        - COUNT this as a dispatch failure (see retry logic below).
     - USE #tool:read to READ fix_report and CONFIRM issue {issue-index} was updated.
     - USE #tool:read to READ code_review_report and CONFIRM issue {issue-index} was updated.
-    - ⛔ GATE: IF either file was NOT updated → USE #tool:interactive/ask_user to report and ask how to proceed.
+    - ⛔ GATE: IF either file was NOT updated:
+        - IF this is the 1st attempt for this issue: re-dispatch (return to STEP 0 for this issue, label attempt 2/2).
+        - IF this is the 2nd attempt: USE #tool:interactive/ask_user:
+          "⚠️ Subagent failed to update reports for issue {issue-index} after 2 attempts.
+           Options: (A) retry manually, (B) mark as ❌ FAILED and continue, (C) abort."
+          - IF user chooses B: manually update fix_report and code_review_report marking issue as ❌ FAILED, then continue.
+          - IF user chooses A: re-dispatch once more and repeat STEP 2.
+          - IF user chooses C: EXIT with current state saved.
 
     STEP 3 — UPDATE TODO
     - USE #tool:todo to mark the current TODO item as completed.
@@ -304,7 +321,16 @@ Each subagent targets only its assigned issue. The parent writes the final summa
   - ⛔ GATE CHECK — Phase 2 complete:
     - USE #tool:read to READ fix_report.
     - VERIFY every issue is marked ✅ RESOLVED, ⚠️ ESCALATED, or ❌ FAILED.
-    - IF any issue has no status → re-dispatch subagent for that issue (STEP 0).
+    - IF any issue has no status AND was not already retried twice:
+        → re-dispatch subagent for that issue (STEP 0), counting as a retry.
+    - IF any issue has no status AND was already retried twice:
+        → USE #tool:interactive/ask_user to report the stuck issue and ask: continue (mark as ❌ FAILED) or abort?
+        → Do NOT re-dispatch again automatically.
+
+  - ⛔ FIX ITERATION GUARD — before advancing to Phase 3:
+    - IF {fix_iteration} >= 2 AND any issue is still ❌ FAILED or ⚠️ ESCALATED:
+        → DISPLAY handoff "⬆️ Escalate to Developer".
+        → Do NOT trigger another fix cycle automatically.
 
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -319,14 +345,23 @@ Each subagent targets only its assigned issue. The parent writes the final summa
 
   - IF regressions introduced by this fix cycle:
     - USE #tool:edit/editFiles to record regressions in fix_report under "Regressions".
-    - USE #tool:interactive/ask_user to inform the user and ask how to proceed.
+    - USE #tool:interactive/ask_user:
+      "⚠️ Regressions detected after fix cycle {fix_iteration} for task {item-id}.
+       See fix_report under 'Regressions'. Options: (A) attempt to fix regressions now, (B) escalate to developer, (C) abort."
+      - IF user chooses A: dispatch a subagent for each regression (treat as new BLOCKING issues, count against fix_iteration limit).
+      - IF user chooses B: DISPLAY handoff "⬆️ Escalate to Developer" and EXIT.
+      - IF user chooses C: EXIT with current state saved.
 
   - IF build is clean:
     - USE #tool:interactive/ask_user:
-      "Build and lint passed after fix cycle {fix_iteration} for task {item-id}.
-       Ready to send back to code reviewer for re-validation. Confirm?"
-      IF confirmed: CONTINUE to Phase 4.
-      IF not confirmed: AWAIT additional instructions.
+      "✅ Build and lint passed after fix cycle {fix_iteration} for task {item-id}.
+       Ready to send back to code reviewer for re-validation. Confirm? (yes / no)"
+      IF confirmed (yes): CONTINUE to Phase 4.
+      IF not confirmed (no): USE #tool:interactive/ask_user:
+        "What would you like to do? (A) make additional changes, (B) escalate to developer, (C) abort"
+        - IF A: AWAIT specific instructions then act on them.
+        - IF B: DISPLAY handoff "⬆️ Escalate to Developer" and EXIT.
+        - IF C: EXIT with current fix_report saved.
 
 
 <!-- ════════════════════════════════════════════════════════════════════
