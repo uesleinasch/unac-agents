@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { render, Box, Text, useApp } from 'ink';
+import { render, Box, Text, Static, useApp } from 'ink';
 import { ProgressBar } from '@inkjs/ui';
 import fs from 'fs/promises';
 import path from 'path';
@@ -261,13 +261,13 @@ const App = ({ sessionId, title, outputDir, timeoutSeconds }) => {
                 "Session ID: ",
                 sessionId),
             React.createElement(Text, { color: "gray" }, "Press Ctrl+C to exit the chat session")),
-        React.createElement(Box, { flexDirection: "column", width: "100%" }, chatHistory.map((msg, i) => (React.createElement(Box, { key: i, flexDirection: "column", marginY: 1 },
-            msg.isQuestion ? (React.createElement(Text, { color: "cyan", wrap: "wrap" },
+        React.createElement(Static, { items: chatHistory.filter((msg) => msg.isQuestion && msg.answer) }, (msg, i) => (React.createElement(Box, { key: i, flexDirection: "column", marginY: 1 },
+            React.createElement(Text, { color: "cyan", wrap: "wrap" },
                 "Q: ",
-                msg.text)) : null,
-            msg.answer ? (React.createElement(Text, { color: "green", wrap: "wrap" },
+                msg.text),
+            React.createElement(Text, { color: "green", wrap: "wrap" },
                 "A: ",
-                msg.answer)) : null)))),
+                msg.answer)))),
         currentQuestionId && (React.createElement(Box, { flexDirection: "column", marginTop: 1, padding: 1, borderStyle: "single", borderColor: timeLeft !== null && timeLeft <= 10 ? 'red' : 'yellow' },
             React.createElement(InteractiveInput
             // Use slice().reverse().find() for broader compatibility instead of findLast()
