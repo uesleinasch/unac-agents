@@ -47,6 +47,7 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
   useEffect(() => {
     setSelectedIndex(0);
     setViewportStart(0);
+    setOtherInputValue('');
   }, [predefinedOptions]);
 
   useInput((input, key) => {
@@ -97,7 +98,6 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
       !key.meta &&
       !key.escape &&
       !key.tab &&
-      !key.shift &&
       !key.leftArrow &&
       !key.rightArrow &&
       input
