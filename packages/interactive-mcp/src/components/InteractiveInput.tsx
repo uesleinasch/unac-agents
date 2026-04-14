@@ -26,12 +26,17 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
   const [viewportStart, setViewportStart] = useState<number>(0);
 
   useEffect(() => {
-    if (selectedIndex < viewportStart) {
-      setViewportStart(selectedIndex);
-    } else if (selectedIndex >= viewportStart + VIEWPORT_SIZE) {
-      setViewportStart(selectedIndex - VIEWPORT_SIZE + 1);
-    }
-  }, [selectedIndex, viewportStart]);
+    setViewportStart((prev) => {
+      if (selectedIndex < prev) return selectedIndex;
+      if (selectedIndex >= prev + VIEWPORT_SIZE) return selectedIndex - VIEWPORT_SIZE + 1;
+      return prev;
+    });
+  }, [selectedIndex]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+    setViewportStart(0);
+  }, [predefinedOptions]);
 
   useInput((input, key) => {
     if (predefinedOptions.length > 0) {
