@@ -204,7 +204,6 @@ const App = ({ sessionId, title, outputDir, timeoutSeconds }) => {
     }, [timeLeft, currentQuestionId]); // Rerun effect when timeLeft or currentQuestionId changes
     // Add a new question to the chat
     const addNewQuestion = (questionId, questionText, options) => {
-        console.clear(); // Clear console before displaying new question
         // Clear existing timer before starting new one
         if (timerRef.current) {
             clearInterval(timerRef.current);
@@ -261,7 +260,7 @@ const App = ({ sessionId, title, outputDir, timeoutSeconds }) => {
                 "Session ID: ",
                 sessionId),
             React.createElement(Text, { color: "gray" }, "Press Ctrl+C to exit the chat session")),
-        React.createElement(Static, { items: chatHistory.filter((msg) => msg.isQuestion && msg.answer) }, (msg, i) => (React.createElement(Box, { key: i, flexDirection: "column", marginY: 1 },
+        React.createElement(Static, { items: chatHistory.filter((msg) => msg.isQuestion && msg.answer !== undefined) }, (msg, i) => (React.createElement(Box, { key: i, flexDirection: "column", marginY: 1 },
             React.createElement(Text, { color: "cyan", wrap: "wrap" },
                 "Q: ",
                 msg.text),
