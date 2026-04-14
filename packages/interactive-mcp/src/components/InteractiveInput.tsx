@@ -3,6 +3,8 @@ import { Box, Text, useInput } from 'ink';
 import { TextInput } from '@inkjs/ui';
 import logger from '@/utils/logger.js';
 
+const VIEWPORT_SIZE = 8;
+
 interface InteractiveInputProps {
   question: string;
   questionId: string;
@@ -21,6 +23,15 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
   );
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [inputValue, setInputValue] = useState<string>('');
+  const [viewportStart, setViewportStart] = useState<number>(0);
+
+  useEffect(() => {
+    if (selectedIndex < viewportStart) {
+      setViewportStart(selectedIndex);
+    } else if (selectedIndex >= viewportStart + VIEWPORT_SIZE) {
+      setViewportStart(selectedIndex - VIEWPORT_SIZE + 1);
+    }
+  }, [selectedIndex, viewportStart]);
 
   useInput((input, key) => {
     if (predefinedOptions.length > 0) {
@@ -118,19 +129,28 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
           <Text dimColor={true}>
             Use ↑/↓ to select options, type for custom input, Enter to submit
           </Text>
-          {predefinedOptions.map((opt, i) => (
-            <Text
-              key={i}
-              color={
-                i === selectedIndex && mode === 'option'
-                  ? 'greenBright'
-                  : undefined
-              }
-            >
-              {i === selectedIndex && mode === 'option' ? '› ' : '  '}
-              {opt}
-            </Text>
-          ))}
+          {viewportStart > 0 && (
+            <Text dimColor>  ↑ {viewportStart} more above</Text>
+          )}
+          {predefinedOptions.slice(viewportStart, viewportStart + VIEWPORT_SIZE).map((opt, relativeI) => {
+            const i = viewportStart + relativeI;
+            return (
+              <Text
+                key={i}
+                color={
+                  i === selectedIndex && mode === 'option'
+                    ? 'greenBright'
+                    : undefined
+                }
+              >
+                {i === selectedIndex && mode === 'option' ? '› ' : '  '}
+                {opt}
+              </Text>
+            );
+          })}
+          {viewportStart + VIEWPORT_SIZE < predefinedOptions.length && (
+            <Text dimColor>  ↓ {predefinedOptions.length - viewportStart - VIEWPORT_SIZE} more below</Text>
+          )}
         </Box>
       )}
 
