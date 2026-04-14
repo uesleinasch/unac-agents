@@ -263,7 +263,6 @@ const App: FC<AppProps> = ({ sessionId, title, outputDir, timeoutSeconds }) => {
     questionText: string,
     options?: string[],
   ) => {
-    console.clear(); // Clear console before displaying new question
     // Clear existing timer before starting new one
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -341,7 +340,7 @@ const App: FC<AppProps> = ({ sessionId, title, outputDir, timeoutSeconds }) => {
       </Box>
 
       {/* Histórico respondido — renderizado uma vez, scroll natural no terminal */}
-      <Static items={chatHistory.filter((msg) => msg.isQuestion && msg.answer)}>
+      <Static items={chatHistory.filter((msg) => msg.isQuestion && msg.answer !== undefined)}>
         {(msg, i) => (
           <Box key={i} flexDirection="column" marginY={1}>
             <Text color="cyan" wrap="wrap">
