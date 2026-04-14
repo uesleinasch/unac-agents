@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(node -e \"const pkg = require\\('./packages/interactive-mcp/package.json'\\); console.log\\('ink version:', pkg.dependencies?.ink || pkg.devDependencies?.ink\\)\")",
+      "Bash(node -e \"const ink = require\\('./packages/interactive-mcp/node_modules/ink'\\); console.log\\('Static exported:', typeof ink.Static\\); console.log\\('ink version actual:', require\\('./packages/interactive-mcp/node_modules/ink/package.json'\\).version\\)\")",
+      "Bash(node -e \"const ink = require\\('ink'\\); console.log\\('Static exported:', typeof ink.Static\\); console.log\\('ink version actual:', require\\('./node_modules/ink/package.json'\\).version\\)\")",
+      "Bash(find /home/unascimento@jacto.local/ueslei/repositories/unac-agents/packages/interactive-mcp/node_modules/ink -name \"Static.d.ts\" -exec cat {} \\\\;)",
+      "Bash(grep -r '\"test\"' packages/*/package.json package.json)",
+      "Bash(ls /home/unascimento@jacto.local/ueslei/repositories/unac-agents/*.json)"
+    ]
+  }
+}

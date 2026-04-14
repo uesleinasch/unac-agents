@@ -92,8 +92,9 @@ are in the model's active context window at the moment of code generation.
 - ✅ ALWAYS dispatch one subagent per task via #runSubagent  — never batch multiple tasks
 - ✅ ALWAYS wait for the subagent to return before dispatching the next one
 - ✅ ALWAYS verify the progress file was updated after each subagent returns
-- ✅ ALWAYS await human approval after each task (STEP 4) before dispatching the next subagent
+- ✅ ALWAYS continue to the next task automatically after each subagent returns successfully
 - ✅ ALWAYS present the "🧪 Request QA Validation" handoff at the end of Phase 4
+- ✅ ONLY use #tool:interactive/ask_user when there is a genuine blocker that requires human decision
 
 ## Hard prohibitions (YOU MUST NEVER do these — they belong to subagents):
 - ❌ NEVER read source files (implementation files, test files, config files, etc.)
@@ -122,10 +123,10 @@ PARENT (orchestrator):
     2. CHECK    → read subagent result summary
     3. GATE ⛔  → IF blocked → report to human; escalate to tech lead; STOP
     4. VERIFY   → read progress file; confirm task is `completed`
-    5. GATE ⛔  → IF not confirmed → prompt user
+    5. GATE ⛔  → IF not confirmed → USE #tool:interactive/ask_user to report; STOP until resolved
     6. TODO     → mark TODO item as completed
-    7. AWAIT ⛔ → present completion report; ask human for approval before next task
-                  (skip on last task — proceed directly to Phase 3)
+    7. ANNOUNCE → post completion report inline; proceed IMMEDIATELY to next task (no human gate)
+                  (on last task — proceed directly to Phase 3)
 
   Phase 3: Run full project build/lint; fix errors; escalate if unresolvable
   Phase 4: Write handoff entry; display "🧪 Request QA Validation"
@@ -217,12 +218,13 @@ After ALL tasks complete:
 - Phase 2: Implementation
 
   ⚠️ ORCHESTRATOR CONSTRAINT: In this entire phase, your permitted actions are:
-     (1) RESPOND to announce task dispatch
+     (1) RESPOND to announce task dispatch and completion
      (2) USE #runSubagent  to dispatch the subagent
      (3) USE #tool:read to verify the progress file was updated
      (4) USE #tool:todo to mark items complete
-     (5) USE #tool:interactive/ask_user for human approval between tasks
+     (5) USE #tool:interactive/ask_user ONLY for genuine blockers (status=blocked or file write failure)
      NOTHING ELSE. Do not read source files. Do not write or edit code. Do not run builds.
+     ❌ NEVER use #tool:interactive/ask_user to ask for "ok" or approval between tasks.
 
   - FOR EACH task in `implementation_plan`, EXECUTE strictly in order:
 
@@ -319,20 +321,15 @@ After ALL tasks complete:
     STEP 3 — UPDATE TODO
     - USE #tool:todo to mark the current TODO item as completed.
 
-    STEP 4 — AWAIT HUMAN APPROVAL  ⛔ MANDATORY — do NOT skip
+    STEP 4 — ANNOUNCE AND CONTINUE
     - RESPOND with the task completion report:
       "✅ Task {task-number} completed: {task-description}
        Files modified: {files-modified}
        Tests added: {tests-added}
        ---
-       Ready to proceed to task {next-task-number}: {next-task-description}.
-       Reply **ok** to continue, or give feedback before I proceed."
-    - USE #tool:interactive/ask_user:
-      "Task {task-number} is done. Proceed to task {next-task-number}? (ok / feedback)"
-    - WAIT for human response before dispatching next subagent.
-    - IF human provides feedback → address it before continuing (may require re-dispatching
-      the current task's subagent with corrected instructions).
-    - ⛔ NEVER dispatch the next subagent without explicit human approval in this step.
+       ▶️ Proceeding to task {next-task-number}: {next-task-description}."
+    - IMMEDIATELY dispatch the next subagent (STEP 0 of next iteration).
+    - ⚠️ Do NOT use #tool:interactive/ask_user here — human approval is NOT required between tasks.
     - EXCEPTION: If this is the LAST task in the plan, skip this step and proceed to Phase 3.
 
   - ⛔ GATE CHECK — Phase 2 complete:
