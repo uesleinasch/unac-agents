@@ -1,10 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { TextInput } from '@inkjs/ui';
+const VIEWPORT_SIZE = 8;
 export const InteractiveInput = ({ question, questionId, predefinedOptions = [], onSubmit, }) => {
     const [mode, setMode] = useState(predefinedOptions.length > 0 ? 'option' : 'input');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [inputValue, setInputValue] = useState('');
+    const [viewportStart, setViewportStart] = useState(0);
+    useEffect(() => {
+        if (selectedIndex < viewportStart) {
+            setViewportStart(selectedIndex);
+        }
+        else if (selectedIndex >= viewportStart + VIEWPORT_SIZE) {
+            setViewportStart(selectedIndex - VIEWPORT_SIZE + 1);
+        }
+    }, [selectedIndex, viewportStart]);
     useInput((input, key) => {
         if (predefinedOptions.length > 0) {
             if (key.upArrow) {
@@ -87,11 +97,22 @@ export const InteractiveInput = ({ question, questionId, predefinedOptions = [],
             React.createElement(Text, { bold: true, color: "cyan", wrap: "wrap" }, question)),
         predefinedOptions.length > 0 && (React.createElement(Box, { flexDirection: "column", marginBottom: 1 },
             React.createElement(Text, { dimColor: true }, "Use \u2191/\u2193 to select options, type for custom input, Enter to submit"),
-            predefinedOptions.map((opt, i) => (React.createElement(Text, { key: i, color: i === selectedIndex && mode === 'option'
-                    ? 'greenBright'
-                    : undefined },
-                i === selectedIndex && mode === 'option' ? '› ' : '  ',
-                opt))))),
+            viewportStart > 0 && (React.createElement(Text, { dimColor: true },
+                "  \u2191 ",
+                viewportStart,
+                " more above")),
+            predefinedOptions.slice(viewportStart, viewportStart + VIEWPORT_SIZE).map((opt, relativeI) => {
+                const i = viewportStart + relativeI;
+                return (React.createElement(Text, { key: i, color: i === selectedIndex && mode === 'option'
+                        ? 'greenBright'
+                        : undefined },
+                    i === selectedIndex && mode === 'option' ? '› ' : '  ',
+                    opt));
+            }),
+            viewportStart + VIEWPORT_SIZE < predefinedOptions.length && (React.createElement(Text, { dimColor: true },
+                "  \u2193 ",
+                predefinedOptions.length - viewportStart - VIEWPORT_SIZE,
+                " more below")))),
         React.createElement(Box, null,
             React.createElement(Text, { color: mode === 'input' ? 'greenBright' : undefined },
                 mode === 'input' ? '✎ ' : '› ',
