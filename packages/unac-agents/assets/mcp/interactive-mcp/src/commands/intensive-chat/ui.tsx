@@ -1,5 +1,5 @@
 import React, { FC, useState, useEffect, useRef } from 'react';
-import { render, Box, Text, useApp } from 'ink';
+import { render, Box, Text, Static, useApp } from 'ink';
 import { ProgressBar } from '@inkjs/ui';
 import fs from 'fs/promises';
 import path from 'path';
@@ -263,7 +263,6 @@ const App: FC<AppProps> = ({ sessionId, title, outputDir, timeoutSeconds }) => {
     questionText: string,
     options?: string[],
   ) => {
-    console.clear(); // Clear console before displaying new question
     // Clear existing timer before starting new one
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -340,23 +339,19 @@ const App: FC<AppProps> = ({ sessionId, title, outputDir, timeoutSeconds }) => {
         <Text color="gray">Press Ctrl+C to exit the chat session</Text>
       </Box>
 
-      <Box flexDirection="column" width="100%">
-        {/* Chat history */}
-        {chatHistory.map((msg, i) => (
+      {/* Histórico respondido — renderizado uma vez, scroll natural no terminal */}
+      <Static items={chatHistory.filter((msg) => msg.isQuestion && msg.answer !== undefined)}>
+        {(msg, i) => (
           <Box key={i} flexDirection="column" marginY={1}>
-            {msg.isQuestion ? (
-              <Text color="cyan" wrap="wrap">
-                Q: {msg.text}
-              </Text>
-            ) : null}
-            {msg.answer ? (
-              <Text color="green" wrap="wrap">
-                A: {msg.answer}
-              </Text>
-            ) : null}
+            <Text color="cyan" wrap="wrap">
+              Q: {msg.text}
+            </Text>
+            <Text color="green" wrap="wrap">
+              A: {msg.answer}
+            </Text>
           </Box>
-        ))}
-      </Box>
+        )}
+      </Static>
 
       {/* Current question input */}
       {currentQuestionId && (
