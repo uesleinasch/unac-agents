@@ -44,12 +44,6 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
     });
   }, [selectedIndex]);
 
-  useEffect(() => {
-    setSelectedIndex(0);
-    setViewportStart(0);
-    setOtherInputValue('');
-  }, [predefinedOptions]);
-
   useInput((input, key) => {
     if (predefinedOptions.length > 0) {
       if (key.upArrow) {
