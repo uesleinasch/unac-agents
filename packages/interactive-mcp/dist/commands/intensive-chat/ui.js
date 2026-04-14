@@ -268,9 +268,7 @@ const App = ({ sessionId, title, outputDir, timeoutSeconds }) => {
                 "A: ",
                 msg.answer)))),
         currentQuestionId && (React.createElement(Box, { flexDirection: "column", marginTop: 1, padding: 1, borderStyle: "single", borderColor: timeLeft !== null && timeLeft <= 10 ? 'red' : 'yellow' },
-            React.createElement(InteractiveInput
-            // Use slice().reverse().find() for broader compatibility instead of findLast()
-            , { 
+            React.createElement(InteractiveInput, { key: currentQuestionId, 
                 // Use slice().reverse().find() for broader compatibility instead of findLast()
                 question: chatHistory
                     .slice()
