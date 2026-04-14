@@ -363,6 +363,7 @@ const App: FC<AppProps> = ({ sessionId, title, outputDir, timeoutSeconds }) => {
           borderColor={timeLeft !== null && timeLeft <= 10 ? 'red' : 'yellow'} // Highlight border when time is low
         >
           <InteractiveInput
+            key={currentQuestionId}
             // Use slice().reverse().find() for broader compatibility instead of findLast()
             question={
               chatHistory
