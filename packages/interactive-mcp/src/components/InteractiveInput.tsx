@@ -5,6 +5,11 @@ import logger from '@/utils/logger.js';
 
 const VIEWPORT_SIZE = 8;
 
+function isOtherOption(opt: string): boolean {
+  const lower = opt.toLowerCase().trim();
+  return lower === 'outro' || lower === 'outros' || lower === 'other' || lower === 'others';
+}
+
 interface InteractiveInputProps {
   question: string;
   questionId: string;
@@ -24,6 +29,12 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [inputValue, setInputValue] = useState<string>('');
   const [viewportStart, setViewportStart] = useState<number>(0);
+  const [otherInputValue, setOtherInputValue] = useState<string>('');
+
+  const isOtherHighlighted =
+    mode === 'option' &&
+    predefinedOptions.length > 0 &&
+    isOtherOption(predefinedOptions[selectedIndex] ?? '');
 
   useEffect(() => {
     setViewportStart((prev) => {
@@ -46,12 +57,14 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
           (prev) =>
             (prev - 1 + predefinedOptions.length) % predefinedOptions.length,
         );
+        setOtherInputValue('');
         return;
       }
 
       if (key.downArrow) {
         setMode('option');
         setSelectedIndex((prev) => (prev + 1) % predefinedOptions.length);
+        setOtherInputValue('');
         return;
       }
     }
@@ -59,10 +72,8 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
     if (key.return) {
       if (mode === 'option' && predefinedOptions.length > 0) {
         const selectedOption = predefinedOptions[selectedIndex];
-        if (selectedOption.toLowerCase() === 'outros') {
-          // "Outros" selected: switch to input mode so user can type a custom value
-          setMode('input');
-          setInputValue('');
+        if (isOtherOption(selectedOption)) {
+          onSubmit(questionId, otherInputValue.trim() || selectedOption);
         } else {
           onSubmit(questionId, selectedOption);
         }
@@ -72,7 +83,15 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
       return;
     }
 
-    // Any other key press switches to input mode
+    // Backspace/delete for inline "outro" input
+    if (key.backspace || key.delete) {
+      if (isOtherHighlighted) {
+        setOtherInputValue((prev) => prev.slice(0, -1));
+        return;
+      }
+    }
+
+    // Character input
     if (
       !key.ctrl &&
       !key.meta &&
@@ -83,11 +102,13 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
       !key.rightArrow &&
       input
     ) {
+      if (isOtherHighlighted) {
+        setOtherInputValue((prev) => prev + input);
+        return;
+      }
       setMode('input');
-      // Update inputValue only if switching to input mode via typing
-      // TextInput's onChange will handle subsequent typing
       if (mode === 'option') {
-        setInputValue(input); // Start input with the typed character
+        setInputValue(input);
       }
     }
   });
@@ -106,18 +127,15 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
   };
 
   const handleSubmit = (value: string) => {
-    // The primary submit logic is now handled in useInput via Enter key
-    // This might still be called by TextInput's internal onSubmit, ensure consistency
     if (mode === 'option' && predefinedOptions.length > 0) {
       const selectedOption = predefinedOptions[selectedIndex];
-      if (selectedOption.toLowerCase() === 'outros') {
-        setMode('input');
-        setInputValue('');
+      if (isOtherOption(selectedOption)) {
+        onSubmit(questionId, otherInputValue.trim() || selectedOption);
       } else {
         onSubmit(questionId, selectedOption);
       }
     } else {
-      onSubmit(questionId, value); // Use the value from TextInput in case it triggered submit
+      onSubmit(questionId, value);
     }
   };
 
@@ -139,18 +157,32 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
           )}
           {predefinedOptions.slice(viewportStart, viewportStart + VIEWPORT_SIZE).map((opt, relativeI) => {
             const i = viewportStart + relativeI;
+            const isSelected = i === selectedIndex && mode === 'option';
+            const showOtherInput = isSelected && isOtherOption(opt);
             return (
-              <Text
-                key={i}
-                color={
-                  i === selectedIndex && mode === 'option'
-                    ? 'greenBright'
-                    : undefined
-                }
-              >
-                {i === selectedIndex && mode === 'option' ? '› ' : '  '}
-                {opt}
-              </Text>
+              <Box key={i} flexDirection="column">
+                <Text color={isSelected ? 'greenBright' : undefined}>
+                  {isSelected ? '› ' : '  '}
+                  {opt}
+                </Text>
+                {showOtherInput && (
+                  <Box
+                    marginLeft={2}
+                    marginTop={0}
+                    borderStyle="single"
+                    borderColor="greenBright"
+                    paddingX={1}
+                  >
+                    <Text color="greenBright">
+                      {'✎ '}
+                      {otherInputValue}
+                      <Text bold color="greenBright">
+                        {'█'}
+                      </Text>
+                    </Text>
+                  </Box>
+                )}
+              </Box>
             );
           })}
           {viewportStart + VIEWPORT_SIZE < predefinedOptions.length && (
@@ -159,23 +191,26 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
         </Box>
       )}
 
-      <Box>
-        <Text color={mode === 'input' ? 'greenBright' : undefined}>
-          {mode === 'input' ? '✎ ' : '› '}
-          <TextInput
-            placeholder={
-              mode === 'input' &&
-              predefinedOptions[selectedIndex]?.toLowerCase() === 'outros'
-                ? 'Digite o valor para "Outros"...'
-                : predefinedOptions.length > 0
+      {!isOtherHighlighted && (
+        <Box
+          borderStyle="single"
+          borderColor={mode === 'input' ? 'greenBright' : 'gray'}
+          paddingX={1}
+        >
+          <Text color={mode === 'input' ? 'greenBright' : 'dim'}>
+            {mode === 'input' ? '✎ ' : '› '}
+            <TextInput
+              placeholder={
+                predefinedOptions.length > 0
                   ? 'Type or select an option...'
                   : 'Type your answer...'
-            }
-            onChange={handleInputChange}
-            onSubmit={handleSubmit}
-          />
-        </Text>
-      </Box>
+              }
+              onChange={handleInputChange}
+              onSubmit={handleSubmit}
+            />
+          </Text>
+        </Box>
+      )}
     </>
   );
 };
