@@ -42,7 +42,14 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
 
     if (key.return) {
       if (mode === 'option' && predefinedOptions.length > 0) {
-        onSubmit(questionId, predefinedOptions[selectedIndex]);
+        const selectedOption = predefinedOptions[selectedIndex];
+        if (selectedOption.toLowerCase() === 'outros') {
+          // "Outros" selected: switch to input mode so user can type a custom value
+          setMode('input');
+          setInputValue('');
+        } else {
+          onSubmit(questionId, selectedOption);
+        }
       } else {
         onSubmit(questionId, inputValue);
       }
@@ -86,7 +93,13 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
     // The primary submit logic is now handled in useInput via Enter key
     // This might still be called by TextInput's internal onSubmit, ensure consistency
     if (mode === 'option' && predefinedOptions.length > 0) {
-      onSubmit(questionId, predefinedOptions[selectedIndex]);
+      const selectedOption = predefinedOptions[selectedIndex];
+      if (selectedOption.toLowerCase() === 'outros') {
+        setMode('input');
+        setInputValue('');
+      } else {
+        onSubmit(questionId, selectedOption);
+      }
     } else {
       onSubmit(questionId, value); // Use the value from TextInput in case it triggered submit
     }
@@ -126,9 +139,12 @@ export const InteractiveInput: FC<InteractiveInputProps> = ({
           {mode === 'input' ? '✎ ' : '› '}
           <TextInput
             placeholder={
-              predefinedOptions.length > 0
-                ? 'Type or select an option...'
-                : 'Type your answer...'
+              mode === 'input' &&
+              predefinedOptions[selectedIndex]?.toLowerCase() === 'outros'
+                ? 'Digite o valor para "Outros"...'
+                : predefinedOptions.length > 0
+                  ? 'Type or select an option...'
+                  : 'Type your answer...'
             }
             onChange={handleInputChange}
             onSubmit={handleSubmit}
