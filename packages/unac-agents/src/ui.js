@@ -27,10 +27,19 @@ export function printBackup(backupPath) {
   console.log(chalk.blue(`${unicode ? '📦' : '[BACKUP]'} Backup created: ${backupPath}`));
 }
 
+export function printTarget(target, scope) {
+  const label = target === 'vscode' ? 'VS Code (GitHub Copilot)' : `Claude Code (${scope})`;
+  console.log(chalk.magenta(`${unicode ? '🎯' : '[TARGET]'} ${label}`));
+}
+
+export function printDestination(destination) {
+  console.log(chalk.gray(`   destination: ${destination}`));
+}
+
 /**
- * @param {{ agents: string[], skills: string[] }} counts
+ * @param {{ target: 'vscode' | 'claude-code', agents: string[], skills: string[], destination: string }} result
  */
-export function printSuccess({ agents, skills }) {
+export function printSuccess({ target, agents, skills, destination }) {
   console.log(chalk.green(`\n${unicode ? '✅' : '[OK]'} Agents installed (${agents.length}):`));
   for (const name of agents) console.log(chalk.green(`  ${unicode ? '•' : '-'} ${name}`));
 
@@ -38,14 +47,24 @@ export function printSuccess({ agents, skills }) {
   for (const name of skills) console.log(chalk.green(`  ${unicode ? '•' : '-'} ${name}`));
 
   console.log();
-  console.log(chalk.bold.green(`${unicode ? '🎉' : '[DONE]'} Done! Reload VS Code to use the new agents and skills.`));
+  console.log(chalk.gray(`Installed at: ${destination}`));
+  console.log();
+
+  if (target === 'vscode') {
+    console.log(chalk.bold.green(`${unicode ? '🎉' : '[DONE]'} Reload VS Code to activate the new agents and skills.`));
+  } else {
+    console.log(chalk.bold.green(`${unicode ? '🎉' : '[DONE]'} Restart Claude Code (or run /agents) to activate.`));
+  }
 }
 
 /**
- * @param {{ agents: string[], skills: string[] }} preview
+ * @param {{ target: 'vscode' | 'claude-code', agents: string[], skills: string[], destination: string }} preview
  */
-export function printDryRun({ agents, skills }) {
+export function printDryRun({ target, agents, skills, destination }) {
   console.log(chalk.yellow(`\n${unicode ? '🔍' : '[DRY-RUN]'} Dry-run mode — no files will be written.\n`));
+  console.log(chalk.yellow(`Target: ${target}`));
+  console.log(chalk.yellow(`Destination: ${destination}\n`));
+
   console.log(chalk.yellow(`Agents to install (${agents.length}):`));
   for (const name of agents) console.log(chalk.yellow(`  ${unicode ? '•' : '-'} ${name}`));
 
@@ -59,4 +78,8 @@ export function printAborted() {
 
 export function printError(message) {
   console.error(chalk.red(`\n${unicode ? '❌' : '[ERROR]'} ${message}`));
+}
+
+export function printInfo(message) {
+  console.log(chalk.cyan(`${unicode ? 'ℹ' : '[i]'} ${message}`));
 }
