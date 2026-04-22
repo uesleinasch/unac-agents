@@ -1,16 +1,16 @@
 import { existsSync, readdirSync, renameSync, rmSync } from 'fs';
 import { resolve } from 'path';
 import { homedir } from 'os';
+import { COPILOT_DIR } from './copy.js';
 
-const COPILOT_DIR = resolve(homedir(), '.copilot');
 const MAX_BACKUPS = 3;
 
 function listBackups() {
   const home = homedir();
   return readdirSync(home)
-    .filter(f => f.startsWith('.copilot-backup-'))
-    .map(f => resolve(home, f))
-    .sort(); // ISO timestamps sort lexicographically
+    .filter((f) => f.startsWith('.copilot-backup-'))
+    .map((f) => resolve(home, f))
+    .sort();
 }
 
 function pruneOldBackups() {
@@ -23,9 +23,15 @@ function pruneOldBackups() {
 
 /**
  * If ~/.copilot exists and has contents, move it to a timestamped backup.
- * Returns the backup path if a backup was created, or null.
+ * Only used for the VS Code target — the installer owns that directory.
+ *
+ * Claude Code installs are surgical overlays into ~/.claude or <repo>/.claude,
+ * which contain user data (sessions, settings, third-party agents) that must
+ * not be moved or deleted. No backup is performed for that target.
+ *
+ * @returns {string | null} backup path if a backup was created
  */
-export function backupIfNeeded() {
+export function backupVscodeIfNeeded() {
   if (!existsSync(COPILOT_DIR)) return null;
 
   const entries = readdirSync(COPILOT_DIR);

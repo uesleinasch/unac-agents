@@ -8,8 +8,10 @@ const pkgRoot = resolve(__dirname, '..');
 const repoRoot = resolve(pkgRoot, '../..');
 
 const sources = [
-  { src: resolve(repoRoot, 'agents'), dest: resolve(pkgRoot, 'assets/agents') },
-  { src: resolve(repoRoot, 'skills'), dest: resolve(pkgRoot, 'assets/skills') },
+  { src: resolve(repoRoot, 'agents-vscode'), dest: resolve(pkgRoot, 'assets/agents-vscode') },
+  { src: resolve(repoRoot, 'agents-claude'), dest: resolve(pkgRoot, 'assets/agents-claude') },
+  { src: resolve(repoRoot, 'skills-shared'), dest: resolve(pkgRoot, 'assets/skills-shared') },
+  { src: resolve(repoRoot, 'skills-claude'), dest: resolve(pkgRoot, 'assets/skills-claude') },
   {
     src: resolve(repoRoot, 'packages/interactive-mcp'),
     dest: resolve(pkgRoot, 'assets/mcp/interactive-mcp'),
