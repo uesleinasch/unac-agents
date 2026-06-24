@@ -58,7 +58,7 @@ Se requer redesign/refatoração ampla → retorne `DONE_WITH_CONCERNS` marcando
 - Se falhar após 2 retries: reverta a mudança, marque issue como `❌ FAILED` em ambos os reports, retorne `BLOCKED`.
 
 ## Passo 5 — Update fix_report
-- Use `Edit` em `.unac/{item-id}/{item-id}_fix_report.md` para marcar issue `{issue-index}` como:
+- Use `Edit` em `.unac/{item-id}/{item-id}_fix-report.md` para marcar issue `{issue-index}` como:
   - `✅ RESOLVED` (fix aplicado, build passou)
   - `⚠️ ESCALATED` (requer redesign)
   - `❌ FAILED` (2 retries falharam)
@@ -66,7 +66,7 @@ Se requer redesign/refatoração ampla → retorne `DONE_WITH_CONCERNS` marcando
 Incluir: file modificado, linhas mudadas, breve descrição.
 
 ## Passo 6 — Update code_review_report
-- Use `Edit` em `.unac/{item-id}/{item-id}_code_review_report.md`: marque o issue original com o mesmo status e o `fix-iteration`.
+- Use `Edit` em `.unac/{item-id}/{item-id}_code-review-report.md`: marque o issue original com o mesmo status e o `fix-iteration`.
 
 - Use `Read` nos 2 arquivos para confirmar (até 2 retries).
 

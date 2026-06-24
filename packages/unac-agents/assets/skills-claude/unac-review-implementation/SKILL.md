@@ -12,7 +12,7 @@ Você é o **controller de review**. Dispatcha `unac-code-reviewer` uma vez por 
 ## Input contract
 
 - `item-id` (obrigatório)
-- Artefatos esperados: `{item-id}_implementation_plan.md`, `{item-id}_implementation_progress.md`, `{item-id}_jira-card.md` em `.unac/{item-id}/`
+- Artefatos esperados: `{item-id}_implementation-plan.md`, `{item-id}_implementation-progress.md`, `{item-id}_jira-card.md` em `.unac/{item-id}/`
 
 ## Checklist
 
@@ -23,11 +23,11 @@ Você é o **controller de review**. Dispatcha `unac-code-reviewer` uma vez por 
 
 ## Passo 1 — Setup
 
-1. `Read` em `{item-id}_implementation_plan.md`, `{item-id}_implementation_progress.md`, `{item-id}_jira-card.md`.
+1. `Read` em `{item-id}_implementation-plan.md`, `{item-id}_implementation-progress.md`, `{item-id}_jira-card.md`.
 2. Extraia em memória cada task: `task-number`, `description`, `ambient`, `files-to-modify`, `acceptance-criteria`.
 3. Extraia ACs do Jira card.
 4. Verifique `status: ready-for-review` no progress file. Se não, apresente warning mas pode prosseguir se o usuário confirmar.
-5. Use `Write` para criar `.unac/{item-id}/{item-id}_code_review_report.md`:
+5. Use `Write` para criar `.unac/{item-id}/{item-id}_code-review-report.md`:
 
 ```markdown
 # Code Review Report — {item-id}
@@ -60,7 +60,7 @@ Agent(
   prompt: <<PROMPT
     item-id: {item-id}
     task-number: {task-number}
-    report-path: .unac/{item-id}/{item-id}_code_review_report.md
+    report-path: .unac/{item-id}/{item-id}_code-review-report.md
 
     ## Task Description (completo, do plano)
     {description}
@@ -128,7 +128,7 @@ Após todas as tasks revisadas:
 
 Apresente ao usuário:
 
-- **`✅ Approved`** ou **`🔄 Approved with Suggestions`**: escreva status no `{item-id}_implementation_progress.md`:
+- **`✅ Approved`** ou **`🔄 Approved with Suggestions`**: escreva status no `{item-id}_implementation-progress.md`:
   ```
   ## Review Status
   result: approved

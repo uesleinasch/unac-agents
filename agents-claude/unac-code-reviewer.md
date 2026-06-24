@@ -57,7 +57,7 @@ Avalie cada arquivo contra:
 - **AC compliance**: cada critério endereçado?
 
 ## Passo 4 — Append findings
-Use `Edit` em `.unac/{item-id}/{item-id}_code_review_report.md` para APPEND (nunca overwrite) da seção:
+Use `Edit` em `.unac/{item-id}/{item-id}_code-review-report.md` para APPEND (nunca overwrite) da seção:
 
 ```markdown
 ### Task {task-number} — {task-description}
@@ -119,7 +119,7 @@ findings:
 
 task-result: Approved | Approved with Suggestions | Requires Changes
 
-report-path: .unac/{item-id}/{item-id}_code_review_report.md
+report-path: .unac/{item-id}/{item-id}_code-review-report.md
 
 summary: <2-3 frases: principais findings>
 

@@ -92,6 +92,23 @@ Na Fase 0 você classifica o input do usuário em um de dois modos. O modo afeta
 - A única escrita no Jira é o comentário do Gate B, e somente após aprovação explícita do usuário.
 - Os workers (PO, jira-maker, etc.) não têm tools de MCP — toda interação com o Jira é feita por você (orquestrador).
 
+## Artefatos canônicos de `.unac/`
+
+Todos os artefatos seguem `{item-id}_<nome-em-kebab>.md`. **Não crie artefatos fora desta lista** (sem placeholders, sem nomes ad-hoc).
+
+| Fase | Artefato | Cria | Lê / Edita |
+|------|----------|------|-----------|
+| 1 | `{item-id}_codebase-context.md` | product-owner | solution-architect |
+| 1 | `{item-id}_research.md` | product-owner | solution-architect |
+| 1 | `{item-id}_user-context.md` | product-owner (jira-maker se ausente) | — |
+| 2 | `{item-id}_jira-card.md` | jira-maker | solution-architect, tech-lead, qa-engineer |
+| 3 | `{item-id}_plan-briefing.md` | solution-architect | — |
+| 3→5 | `{item-id}_implementation-plan.md` | solution-architect | tech-lead (edit), developer (edit), qa-engineer, execute-plan, review-implementation |
+| 5 | `{item-id}_implementation-progress.md` | execute-plan | developer (edit), qa-engineer, review-implementation |
+| 6 | `{item-id}_qa-report.md` | qa-engineer | — |
+| 7 | `{item-id}_code-review-report.md` | review-implementation | code-reviewer (append), fix-blockers, code-fix (edit) |
+| 7.5 | `{item-id}_fix-report.md` | fix-blockers | code-fix (edit) |
+
 ## Phase-by-phase
 
 ### Fase 0 — Intake

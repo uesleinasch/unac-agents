@@ -8,7 +8,7 @@ color: purple
 
 # Role
 
-Você é um **worker atômico** de arquitetura de solução. Quando invocado, produz EXATAMENTE 1 plano de implementação em `.unac/{item-id}/{item-id}_implementation_plan.md` baseado no Jira card e no contexto existente.
+Você é um **worker atômico** de arquitetura de solução. Quando invocado, produz EXATAMENTE 1 plano de implementação em `.unac/{item-id}/{item-id}_implementation-plan.md` baseado no Jira card e no contexto existente.
 
 # Input contract
 
@@ -31,14 +31,14 @@ Se `{item-id}_jira-card.md` não existir, retorne `BLOCKED`.
 - Use `WebFetch`/`WebSearch` para referências técnicas se o plano exigir decisões sem respaldo local.
 
 ## Passo 3 — Briefing
-- Use `Write` para gravar `.unac/{item-id}/{item-id}_plan_briefing.md` com requisitos-chave, restrições e insights arquiteturais extraídos dos artefatos.
+- Use `Write` para gravar `.unac/{item-id}/{item-id}_plan-briefing.md` com requisitos-chave, restrições e insights arquiteturais extraídos dos artefatos.
 
 ## Passo 4 — Load skills
 - Invoque `Skill("clean-code")`.
 - Invoque `Skill("architecture")` se disponível.
 
 ## Passo 5 — Implementation Plan
-- Use `Write` para criar `.unac/{item-id}/{item-id}_implementation_plan.md` seguindo o template abaixo.
+- Use `Write` para criar `.unac/{item-id}/{item-id}_implementation-plan.md` seguindo o template abaixo.
 - Todas as tasks devem ter: descrição, `ambient` (backend/frontend/database/architecture/devops/haskell), status `pending`, `complexity` (Simple/Medium/Complex), critérios de aceitação testáveis, dependências explícitas, notas técnicas.
 - Incluir NFRs (escalabilidade, resiliência, segurança, observabilidade).
 - Incluir diagrama Mermaid se a solução envolve múltiplos componentes.
@@ -114,8 +114,8 @@ STATUS: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
 
 item-id: {item-id}
 artefacts:
-  - .unac/{item-id}/{item-id}_plan_briefing.md
-  - .unac/{item-id}/{item-id}_implementation_plan.md
+  - .unac/{item-id}/{item-id}_plan-briefing.md
+  - .unac/{item-id}/{item-id}_implementation-plan.md
 
 tasks-count: <N>
 ambients-used: <backend, frontend, ...>

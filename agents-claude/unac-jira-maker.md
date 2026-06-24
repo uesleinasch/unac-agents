@@ -49,7 +49,7 @@ Se `item-id` ou input do usuário estiver ausente, retorne `BLOCKED`.
 
 ## Passo 4 — Save
 - Use `Write` para gravar `.unac/{item-id}/{item-id}_jira-card.md`.
-- Use `Write` para gravar `.unac/{item-id}/{item-id}_user_context.md` (se ainda não existe).
+- Use `Write` para gravar `.unac/{item-id}/{item-id}_user-context.md` (se ainda não existe).
 - Use `Read` para confirmar os arquivos (até 2 retries).
 
 # Constraints
@@ -69,7 +69,7 @@ item-id: {item-id}
 type: HU | Task | Bug
 artefacts:
   - .unac/{item-id}/{item-id}_jira-card.md
-  - .unac/{item-id}/{item-id}_user_context.md
+  - .unac/{item-id}/{item-id}_user-context.md
 
 summary: <2-3 frases descrevendo o card produzido>
 
