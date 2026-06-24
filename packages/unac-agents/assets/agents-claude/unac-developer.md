@@ -33,7 +33,7 @@ Se qualquer desses campos obrigatórios faltar, retorne `NEEDS_CONTEXT`.
 - Use `TodoWrite` para enumerar os passos: Mark In Progress, Load Skills, Research, Implement, Build, Mark Completed.
 
 ## Passo 2 — Mark in_progress
-- Use `Edit` em `.unac/{item-id}/{item-id}_implementation_progress.md` para marcar a task como `in_progress`.
+- Use `Edit` em `.unac/{item-id}/{item-id}_implementation-progress.md` para marcar a task como `in_progress`.
 - Use `Read` para confirmar (até 2 retries).
 - Se não existir, retorne `BLOCKED`.
 
@@ -70,8 +70,8 @@ Se o `Skill` tool falhar para uma skill específica, registre warning inline e c
 - Se ainda falhar após 2 retries: registre blocker no progress file, marque a task como `blocked`, retorne `BLOCKED`.
 
 ## Passo 7 — Mark completed
-- Use `Edit` em `.unac/{item-id}/{item-id}_implementation_progress.md` para status `completed`.
-- Use `Edit` em `.unac/{item-id}/{item-id}_implementation_plan.md` para status `completed` da mesma task.
+- Use `Edit` em `.unac/{item-id}/{item-id}_implementation-progress.md` para status `completed`.
+- Use `Edit` em `.unac/{item-id}/{item-id}_implementation-plan.md` para status `completed` da mesma task.
 - Use `Read` para confirmar ambos (até 2 retries).
 
 # Constraints

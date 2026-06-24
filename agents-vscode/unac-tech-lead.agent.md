@@ -44,7 +44,7 @@ model: Claude Sonnet 4.6 (copilot)
 ---
 
 ## Phase 1: Plan Validation
-- RUN #tool:read/readFile and READ `.unac/{item-id}/{item-id}_implementation_plan.md`.
+- RUN #tool:read/readFile and READ `.unac/{item-id}/{item-id}_implementation-plan.md`.
 - RUN #tool:read/readFile and READ `.unac/{item-id}/{item-id}_jira-card.md`.
 
 - VALIDATE the plan against ALL of the following criteria:
@@ -69,7 +69,7 @@ model: Claude Sonnet 4.6 (copilot)
         - IF gaps cannot be resolved without user input: return a detailed error report to the calling agent describing exactly what is missing.
       - IF invoked directly:
         - RUN #tool:interactive/ask_user to describe the specific issues and request the necessary information.
-        - APPLY corrections to `.unac/{item-id}/{item-id}_implementation_plan.md`.
+        - APPLY corrections to `.unac/{item-id}/{item-id}_implementation-plan.md`.
         - GO BACK to Phase 1: Plan Validation (revalidate).
     - ELSE (all criteria pass): continue to Phase 2.
 
@@ -83,7 +83,7 @@ model: Claude Sonnet 4.6 (copilot)
 ## Phase 2: Task Breakdown
 - INVOKE api-patterns SKILL.
 - INVOKE clean-code SKILL.
-- RUN #tool:read/readFile and READ the validated plan from `.unac/{item-id}/{item-id}_implementation_plan.md`.
+- RUN #tool:read/readFile and READ the validated plan from `.unac/{item-id}/{item-id}_implementation-plan.md`.
 
 - FOR EACH task in the plan, evaluate against <task_quality_standards>:
   - IF task does NOT meet all quality standards:
@@ -93,11 +93,11 @@ model: Claude Sonnet 4.6 (copilot)
     - ASSIGN estimated complexity: Simple | Medium | Complex.
     - ADD explicit dependencies (or state "none").
 
-- RUN #tool:edit/editFiles and UPDATE `.unac/{item-id}/{item-id}_implementation_plan.md` with ALL breakdowns and clarifications.
+- RUN #tool:edit/editFiles and UPDATE `.unac/{item-id}/{item-id}_implementation-plan.md` with ALL breakdowns and clarifications.
 
 ⛔ GATE CHECK — Phase 2 exit:
   - VERIFY: ALL tasks in the plan meet every quality standard in <task_quality_standards>.
-  - VERIFY: `.unac/{item-id}/{item-id}_implementation_plan.md` has been updated.
+  - VERIFY: `.unac/{item-id}/{item-id}_implementation-plan.md` has been updated.
   - RUN #tool:read/readFile to confirm the updated file content.
   - IF any task still fails quality standards → REPEAT Phase 2 for that task. Do NOT advance.
   - IF all pass → mark "Phase 2: Task Breakdown" as complete in TODO. NEXT: Phase 3.
@@ -128,7 +128,7 @@ model: Claude Sonnet 4.6 (copilot)
         - INFORM the user: "Task breakdown complete. The plan is ready for implementation."
         - STOP.
       - ELSE IF user requests changes:
-        - APPLY changes to `.unac/{item-id}/{item-id}_implementation_plan.md`.
+        - APPLY changes to `.unac/{item-id}/{item-id}_implementation-plan.md`.
         - REPEAT Phase 3: Refinement (max 3 times total across this phase).
   </workflow>
 

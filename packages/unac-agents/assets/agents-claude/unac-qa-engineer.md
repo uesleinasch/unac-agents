@@ -19,8 +19,8 @@ O prompt contém:
 - (Opcional) `mode: fresh | rerun` — `fresh` escreve testes do zero; `rerun` re-executa testes existentes e reporta novo resultado
 
 Artefatos requeridos:
-- `.unac/{item-id}/{item-id}_implementation_plan.md`
-- `.unac/{item-id}/{item-id}_implementation_progress.md` com `status: ready-for-review`
+- `.unac/{item-id}/{item-id}_implementation-plan.md`
+- `.unac/{item-id}/{item-id}_implementation-progress.md` com `status: ready-for-review`
 - `.unac/{item-id}/{item-id}_jira-card.md` (preferido; se ausente, retorne `NEEDS_CONTEXT`)
 
 # Your work (single atomic unit)
@@ -69,7 +69,7 @@ Se o texto do AC for vago, retorne `BLOCKED` listando os critérios ambíguos.
 - Capture output completo: pass/fail por test, mensagens de erro, stack traces.
 
 ## Passo 8 — QA report
-- Use `Write` para criar `.unac/{item-id}/{item-id}_qa_report.md`:
+- Use `Write` para criar `.unac/{item-id}/{item-id}_qa-report.md`:
 
 ```markdown
 # QA Report — {item-id}
@@ -125,7 +125,7 @@ date: YYYY-MM-DD
 STATUS: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
 
 item-id: {item-id}
-artefact: .unac/{item-id}/{item-id}_qa_report.md
+artefact: .unac/{item-id}/{item-id}_qa-report.md
 verdict: approved | failed
 
 test-framework: {framework}

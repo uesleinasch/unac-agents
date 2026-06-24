@@ -26,7 +26,7 @@ Se o `item-id` ou o texto original estiver ausente, retorne `BLOCKED` imediatame
 
 ## Passo 1 — Setup
 - Use `TodoWrite` para criar uma lista curta dos passos (Codebase Research, Web Research, Handoff).
-- Verifique se `.unac/{item-id}/` existe. Se não, crie-o (via `Write` criando um arquivo placeholder ou pelo primeiro `Write` de artefato abaixo).
+- O diretório `.unac/{item-id}/` é criado automaticamente pelo `Write` do primeiro artefato (`{item-id}_codebase-context.md`). NÃO crie arquivos placeholder nem artefatos fora da lista canônica.
 
 ## Passo 2 — Codebase Research
 - Use `Grep` (exact match) + `Glob` (file patterns) para descobrir arquivos, módulos, componentes relevantes ao pedido do usuário.
@@ -38,13 +38,13 @@ Se o `item-id` ou o texto original estiver ausente, retorne `BLOCKED` imediatame
 - Grave em `.unac/{item-id}/{item-id}_research.md`. Apenas fatos — sem recomendações.
 
 ## Passo 4 — User Context
-- Grave o input literal do usuário em `.unac/{item-id}/{item-id}_user_context.md`.
+- Grave o input literal do usuário em `.unac/{item-id}/{item-id}_user-context.md`.
 
 ## Passo 5 — Verificação
 - Use `Read` para confirmar que os 3 arquivos existem e são não-vazios:
   - `.unac/{item-id}/{item-id}_codebase-context.md`
   - `.unac/{item-id}/{item-id}_research.md`
-  - `.unac/{item-id}/{item-id}_user_context.md`
+  - `.unac/{item-id}/{item-id}_user-context.md`
 - Se qualquer arquivo estiver vazio ou ausente, reescreva e re-verifique (até 2 tentativas). Se ainda falhar, retorne `BLOCKED`.
 
 # Constraints
@@ -65,7 +65,7 @@ item-id: {item-id}
 artefacts:
   - .unac/{item-id}/{item-id}_codebase-context.md
   - .unac/{item-id}/{item-id}_research.md
-  - .unac/{item-id}/{item-id}_user_context.md
+  - .unac/{item-id}/{item-id}_user-context.md
 
 summary: <2-4 frases resumindo as descobertas principais>
 

@@ -16,7 +16,7 @@ handoffs:
       Start the architecture and implementation planning using all context files
       available in `.unac/{item-id}/`:
         - `{item-id}_jira-card.md` — approved Jira card
-        - `{item-id}_user_context.md` — original user input
+        - `{item-id}_user-context.md` — original user input
         - `{item-id}_codebase-context.md` — codebase research findings
         - `{item-id}_research.md` — web/documentation research findings
       Replace `{item-id}` with the actual item ID before sending.
@@ -111,7 +111,7 @@ handoffs:
 
 - WAIT for the subagent to complete and return the formatted Jira card saved at:
   - `.unac/{item-id}/{item-id}_jira-card.md`
-  - `.unac/{item-id}/{item-id}_user_context.md`
+  - `.unac/{item-id}/{item-id}_user-context.md`
 
 ### ⛔ GATE CHECK — Phase 2 Exit
 - RUN #tool:read/readFile — verify the card file exists and is non-empty:
@@ -124,7 +124,7 @@ handoffs:
 ## Phase 3 — User Validation
 
 - RUN #tool:read/readFile — read `.unac/{item-id}/{item-id}_jira-card.md`.
-- RUN #tool:read/readFile — read `.unac/{item-id}/{item-id}_user_context.md`.
+- RUN #tool:read/readFile — read `.unac/{item-id}/{item-id}_user-context.md`.
 - RUN #interactive (#tool:interactive/ask_user) — present a summary of:
   - The generated Jira card.
   - Key codebase findings that influenced it.
@@ -134,7 +134,7 @@ handoffs:
 
 **Decision Tree:**
 - IF user reports misalignment or missing requirements:
-  - UPDATE `.unac/{item-id}/{item-id}_user_context.md` with the new input.
+  - UPDATE `.unac/{item-id}/{item-id}_user-context.md` with the new input.
   - RETURN to Phase 1B (web research) or Phase 2 (card regeneration) as appropriate.
 - ELSE (user confirms alignment):
   - PROCEED to Phase 4: Refinement Loop.
@@ -189,7 +189,7 @@ handoffs:
     - TRIGGER: End of Phase 1, after both gate checks pass.
     - INPUT: item-id, working-directory, literal user input, codebase context summary, research context summary.
     - PROCESS: The subagent formats the Jira card using the jira-card-maker skill and the correct template (HU / Task / Bug).
-    - OUTPUT: `.unac/{item-id}/{item-id}_jira-card.md` and `.unac/{item-id}/{item-id}_user_context.md`.
+    - OUTPUT: `.unac/{item-id}/{item-id}_jira-card.md` and `.unac/{item-id}/{item-id}_user-context.md`.
     - CONTRACT: The subagent starts with a clean context — ALL necessary information MUST be passed explicitly in the invocation prompt.
   </subagent-contract>
 
