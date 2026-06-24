@@ -13,11 +13,11 @@ Você é o **controller** (orquestrador) do pipeline unac-agents. Este skill te 
 
 Você DEVE criar uma TODO (`TodoWrite`) com um item para cada fase e completar em ordem. NUNCA pule fases. NUNCA dispatche múltiplos agents em paralelo neste pipeline — é estritamente serial.
 
-1. **Fase 0 — Intake**: identificar o `item-id` e o texto original do usuário
+1. **Fase 0 — Intake**: classificar o modo (Texto vs Jira), identificar o `item-id` e o texto original; em Modo JIRA, verificar o MCP Atlassian e ler o card original
 2. **Fase 1 — Product Research**: dispatchar `unac-product-owner`
 3. **Gate A — User review** dos artefatos de pesquisa
 4. **Fase 2 — Jira Card**: dispatchar `unac-jira-maker`
-5. **Gate B — User approval** do card
+5. **Gate B — User approval** do card (em Modo JIRA com MCP ativo, postar o card como comentário no Jira após a aprovação)
 6. **Fase 3 — Architecture**: dispatchar `unac-solution-architect`
 7. **Fase 4 — Plan Validation**: dispatchar `unac-tech-lead`
 8. **Gate C — User approval** do plano
@@ -33,12 +33,18 @@ Você DEVE criar uma TODO (`TodoWrite`) com um item para cada fase e completar e
 
 ```dot
 digraph unac_pipeline {
-    "Fase 0: Intake" -> "Fase 1: unac-product-owner";
+    "Fase 0: Intake" -> "Fase 1: unac-product-owner" [label="modo texto"];
+    "Fase 0: Intake" -> "Fase 0.1: verificar MCP" [label="modo jira"];
+    "Fase 0.1: verificar MCP" -> "Fase 0.2: ler card (getJiraIssue)" [label="mcp ativo"];
+    "Fase 0.1: verificar MCP" -> "Fase 1: unac-product-owner" [label="fallback local"];
+    "Fase 0.2: ler card (getJiraIssue)" -> "Fase 1: unac-product-owner";
     "Fase 1: unac-product-owner" -> "Gate A: review research";
     "Gate A: review research" -> "Fase 2: unac-jira-maker" [label="approve"];
     "Gate A: review research" -> "Fase 1: unac-product-owner" [label="refine"];
     "Fase 2: unac-jira-maker" -> "Gate B: approve card";
     "Gate B: approve card" -> "Fase 3: unac-solution-architect" [label="approve"];
+    "Gate B: approve card" -> "Jira: addComment" [label="approve + jira/mcp"];
+    "Jira: addComment" -> "Fase 3: unac-solution-architect";
     "Gate B: approve card" -> "Fase 2: unac-jira-maker" [label="refine"];
     "Fase 3: unac-solution-architect" -> "Fase 4: unac-tech-lead";
     "Fase 4: unac-tech-lead" -> "Gate C: approve plan";
@@ -70,11 +76,38 @@ Para TODO dispatch, você deve:
    - `BLOCKED` → apresentar bloqueio ao usuário e decidir: retry com mais contexto, escalar, ou abortar
    - `NEEDS_CONTEXT` → fornecer o contexto faltando e re-dispatch
 
+## Modo de entrada (Texto vs Jira)
+
+Na Fase 0 você classifica o input do usuário em um de dois modos. O modo afeta a Fase 0 e o Gate B; o resto do pipeline é idêntico.
+
+| Modo | Gatilho | Efeito |
+|------|---------|--------|
+| **TEXTO** | Texto livre, sem link/key do Jira | Comportamento padrão. `item-id` gerado/perguntado. Nada é lido nem escrito no Jira. |
+| **JIRA** | Uma **URL** do Jira (`…atlassian.net/browse/KEY-123` ou `…/jira/…/issues/KEY-123`) **ou** uma **key isolada** `[A-Z][A-Z0-9_]+-\d+` | `item-id` = a key (ex.: `PROJ-123`). Lê o card original via MCP e posta o nosso card como comentário (ver Fase 0 e Gate B). |
+
+**Desambiguação:** uma URL entra em Modo JIRA direto. Uma key isolada (sem URL) é gatilho fraco — pode ser falso positivo (`ABC-123` qualquer). Nesse caso, **confirme a intenção** com o usuário antes de tratar como Jira.
+
+**Guard-rails do Jira (válidos em todo o pipeline):**
+- ❌ NUNCA crie issue nova no Jira (`createJiraIssue` ou equivalente). A pipeline só **lê** (`getJiraIssue`) e **comenta** (`addCommentToJiraIssue`).
+- A única escrita no Jira é o comentário do Gate B, e somente após aprovação explícita do usuário.
+- Os workers (PO, jira-maker, etc.) não têm tools de MCP — toda interação com o Jira é feita por você (orquestrador).
+
 ## Phase-by-phase
 
 ### Fase 0 — Intake
-- Identifique `item-id` do pedido. Se vago, pergunte ao usuário diretamente (você é a sessão principal: escreva a pergunta e encerre o turno para aguardar resposta; ou use `AskUserQuestion` para escolha estruturada).
-- Guarde `user-request-raw` em memória.
+1. **Classifique o modo de entrada** (ver "Modo de entrada"): TEXTO ou JIRA.
+2. **Modo TEXTO:**
+   - Identifique `item-id` do pedido. Se vago, pergunte ao usuário (você é a sessão principal: escreva a pergunta e encerre o turno, ou use `AskUserQuestion`).
+   - Guarde `user-request-raw` em memória. Marque `jira-mode = texto`. Siga para a Fase 1.
+3. **Modo JIRA:**
+   - **0.1 — Verifique o MCP Atlassian.** Use `ToolSearch` (ex.: query `atlassian jira`) para detectar tools cujo nome contenha "atlassian"/"jira" (ex.: `mcp__*Atlassian*__getJiraIssue`, `…__addCommentToJiraIssue`).
+     - **Disponível** → siga para 0.2.
+     - **Ausente/inativo** → peça para instalar/ativar o MCP Atlassian E ofereça o fallback local na mesma mensagem:
+       > "O MCP Atlassian não está disponível. Instale/ative para eu ler o card e postar o detalhamento como comentário; ou cole aqui o conteúdo do card que eu sigo localmente (sem postar no Jira)."
+       - Se instalar/ativar → re-verifique e siga para 0.2.
+       - Se optar pelo fallback → marque `jira-mode = fallback-local`, use o conteúdo colado como `jira-card-raw` e pule para 0.3.
+   - **0.2 — Leia o card** com `getJiraIssue(jira-key)`. Extraia: summary, description, issuetype (Bug/Story/Task), status, ACs (se houver), url. Guarde como `jira-card-raw`. Marque `jira-mode = mcp`. Se a leitura falhar (key errada/sem acesso): ofereça corrigir a key ou cair no fallback local (colar o conteúdo).
+   - **0.3 — Componha** `user-request-raw` = `jira-card-raw` + qualquer texto extra colado junto ao link. Defina `item-id = jira-key`. Siga para a Fase 1.
 
 ### Fase 1 — Product Research
 ```
@@ -111,7 +144,13 @@ Agent(
 ```
 
 ### Gate B — Card approval
-Apresente o card ao usuário. Aprovação → Fase 3. Mudanças → re-dispatch Fase 2 com feedback.
+Apresente o card ao usuário.
+- **Mudanças** → re-dispatch Fase 2 com feedback (a postagem só ocorre na aprovação final).
+- **Aprovação** → conforme o modo:
+  - **Modo JIRA + `jira-mode = mcp`:** poste o conteúdo do nosso card como **comentário** no card original via `addCommentToJiraIssue(jira-key, <corpo>)`. Prefixe o corpo com "Detalhamento gerado pela pipeline unac-agents" + o corpo do card. Confirme ao usuário (ex.: "Comentário postado em PROJ-123."). Se a postagem **falhar** (permissão/erro), NÃO aborte: avise, lembre que o card está em `.unac/{item-id}/{item-id}_jira-card.md` para colar à mão, e siga.
+  - **Modo JIRA + `jira-mode = fallback-local`:** não poste. Avise que o card está em `.unac/{item-id}/{item-id}_jira-card.md` para colar manualmente no Jira.
+  - **Modo TEXTO:** sem postagem.
+- Após resolver a postagem → Fase 3.
 
 ### Fase 3 — Solution Architect
 ```
@@ -182,6 +221,9 @@ Invoque a skill `unac-fix-blockers` passando o `item-id`. Retornando, invoque no
 - ❌ Continuar após `BLOCKED` sem escalar ao usuário
 - ❌ Ignorar `NEEDS_CONTEXT` — sempre forneça o que falta e re-dispatch
 - ❌ Avançar além de 2 fix-iterations sem escalar
+- ❌ Criar issue nova no Jira (`createJiraIssue`) — a pipeline só lê e comenta cards existentes
+- ❌ Postar comentário no Jira antes da aprovação do Gate B
+- ❌ Abortar a pipeline porque a leitura/postagem no Jira falhou — degrade para fallback local com aviso
 
 ## Sub-skills invocadas
 
