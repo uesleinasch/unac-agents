@@ -63,7 +63,7 @@ Para cada blocker, determinar o tamanho do painel:
 |----------|------------------|
 | Blocker de alto risco (segurança, data loss, contrato externo, AC crítico) | 3 verifiers (lentes: `correctness`, `ac-spec`, `reachability`) |
 | Blocker de risco médio (lógica de negócio, edge case, performance significativa) | 2 verifiers (lentes: `correctness`, `ac-spec`) |
-| Blocker de baixo risco (estilo forçado a blocking, formatação, naming crítico) | 1 verifier (lente: `correctness`) |
+| Blocker de baixo risco (estilo forçado a blocking, formatação, naming periférico) | 1 verifier (lente: `correctness`) |
 | Muitos blockers (> 6) e todos de baixo risco | 1 verifier por blocker (lente: `correctness`) — preservar orçamento |
 
 ---
@@ -82,7 +82,6 @@ Agent(
   description: "Verify blocker {i}/{total} lens={lens} for {item-id}",
   model: "sonnet",
   prompt: <<PROMPT
-    item-id: {item-id}
     claim: {claim do blocker}
     evidence: {evidence do blocker}
     mode: review
@@ -107,7 +106,7 @@ Aguardar todos os retornos antes de prosseguir.
 
 > **REGRA EXPLÍCITA DE DECISÃO** (não altere esta lógica):
 >
-> Um blocker **CAI** (rebaixa para 🟡) **somente se** a **maioria absoluta** dos verifiers do seu painel retornar `resolved: rebaixar` com evidência conclusiva.
+> Um blocker **CAI** (rebaixa para 🟡) **somente se** a **maioria absoluta** dos verifiers do seu painel retornar `resolved: rebaixar`.
 >
 > Em qualquer outro cenário, o blocker **SOBREVIVE**:
 > - Qualquer verifier com `resolved: manter-blocker` → SOBREVIVE
