@@ -200,7 +200,7 @@ A constitution carrega os **princípios não-negociáveis do projeto-alvo** e go
 Antes de dispatchar o PO, invoque a skill `unac-explore` para produzir o contexto verificado:
 
 ```
-Skill("unac-explore", args: "item-id: {item-id}  context: {user-request-raw}  depth: standard")
+Skill("unac-explore", args: "item-id: {item-id}  context: {user-request-raw}  depth: standard")  # user-request-raw definido na Fase 0
 ```
 
 Aguarde DONE (ou DONE_WITH_CONCERNS). Os artefatos `.unac/{item-id}/{item-id}_codebase-context.md` e `_research.md` estarão disponíveis para o PO consumir.
@@ -235,7 +235,7 @@ Ao receber DONE, armazene `handoff-prompt` do retorno para uso na Fase 2.
 Apresente um resumo dos 3 artefatos ao usuário. Pergunte:
 > "Pesquisa completa. Revise `.unac/{item-id}/`. Posso gerar o Jira card, ou quer ajustar alguma coisa?"
 
-Espere resposta. Se refine, re-dispatch Fase 1 com input adicional.
+Espere resposta. Se refine, re-dispatch Fase 1b (unac-product-owner) com input adicional — os artefatos da explore (Fase 1a) já existem e o PO os reconsome pelo caminho primário; não re-invoque a explore.
 
 ### Fase 2 — Jira Card
 ```
