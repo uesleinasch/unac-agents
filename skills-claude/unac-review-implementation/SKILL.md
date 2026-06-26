@@ -157,7 +157,11 @@ Apresente ao usuário:
 - **`🚫 Requires Changes`**: apresente:
   > "Review encontrou {N} blocking issues sobreviventes (após verificação adversarial). Opções: (A) invocar `unac-fix-blockers` skill agora, (B) revisar manualmente, (C) abortar."
 
-  Se A: invoque `Skill("unac-fix-blockers")` com o `item-id` e a `surviving-list` retornada pela `unac-verify-review`. Quando retornar, REINVOQUE esta skill (`unac-review-implementation`) para re-validar. **Limite 2 iterações** de review+fix; depois escale.
+  Se A: invoque `unac-fix-blockers` passando o `item-id` e a `surviving-list` retornada pela `unac-verify-review`, serializando a lista no `args:` (análogo à invocação da verify-review):
+  ```
+  Skill("unac-fix-blockers", args: "item-id: {item-id}  surviving-list: <blockers sobreviventes retornados pela unac-verify-review>")
+  ```
+  Quando retornar, REINVOQUE esta skill (`unac-review-implementation`) para re-validar. **Limite 2 iterações** de review+fix; depois escale.
 
 ## Red flags
 
