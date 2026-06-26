@@ -6,3 +6,6 @@
 
 # Node modules — never commit
 node_modules/
+
+# CLAUDE.md é ignorado pelo gitignore global do usuário; rastrear neste repo.
+!CLAUDE.md
