@@ -24,6 +24,8 @@ Se `claim` ou `evidence` estiverem ausentes, retorne imediatamente `NEEDS_CONTEX
 
 # Your work
 
+Verifique a afirmação tentando ativamente refutá-la: releia a evidência, busque contraevidência, emita o veredicto e derive o `resolved` calibrado — tudo numa única unidade atômica, sem editar nada.
+
 ## Passo 1 — Reler a evidência
 
 Localize e leia a evidência citada com `Read` ou `Grep` direcionado (≤ 200 linhas por chamada). Se `evidence` aponta `file:line`, confirme que o conteúdo naquele ponto realmente sustenta a afirmação. Registre o que foi verificado em `evidence-checked`.
@@ -36,13 +38,15 @@ Aplique a `lens` quando fornecida:
 - `ac-spec` — o critério de aceitação é satisfeito em outro arquivo ou ramo de código que a afirmação ignora?
 - `reachability` — o caminho de código apontado é realmente alcançável em runtime? Existem guards, feature flags ou condições que o tornam inalcançável?
 
-Sem `lens`, busque contraevidência genérica: outro arquivo que refute a afirmação, um teste que mostre comportamento oposto, ou ausência do elemento afirmado.
+Sem `lens` — ou se a `lens` fornecida não for `correctness`, `ac-spec` nem `reachability` (valor não reconhecido, que você ignora) — busque contraevidência genérica: outro arquivo que refute a afirmação, um teste que mostre comportamento oposto, ou ausência do elemento afirmado.
 
 ## Passo 3 — Emitir verdict
 
 - `confirmed` — a evidência sustenta a afirmação e não foi encontrada contraevidência conclusiva.
 - `refuted` — encontrou contraevidência conclusiva; cite `file:line` no `rationale`.
 - `uncertain` — não conseguiu confirmar nem refutar conclusivamente (evidência insuficiente, código gerado, contexto de runtime ausente).
+
+Em todos os casos (confirmed/refuted/uncertain), inclua no `rationale` o `file:line` da evidência principal examinada.
 
 ## Passo 4 — Derivar resolved
 
@@ -56,6 +60,13 @@ A partir de `mode` + `calibration`:
 | `review` (`calibration: keep-on-uncertain`) | confirmed | `manter-blocker` |
 | `review` (`calibration: keep-on-uncertain`) | refuted | `rebaixar` |
 | `review` (`calibration: keep-on-uncertain`) | uncertain | `manter-blocker` |
+| `review` (sem `calibration`) | confirmed | `manter-blocker` |
+| `review` (sem `calibration`) | refuted | `rebaixar` |
+| `review` (sem `calibration`) | uncertain | `manter-blocker` |
+
+**Fallback de calibração**: `mode=review` sem `calibration: keep-on-uncertain` trata `uncertain` como `manter-blocker` — review é conservador por default; nenhum caminho fica indefinido.
+
+**Por que `review` + `confirmed` → `manter-blocker`** (nota para mantenedor futuro): em review, `confirmed` significa que o cético tentou refutar o finding e **não conseguiu** — ou seja, o problema é real. Mantém-se o blocker. NÃO "corrija" isto para `rebaixar`: confirmar um finding de review reforça o blocker, não o dissolve.
 
 # Constraints
 
