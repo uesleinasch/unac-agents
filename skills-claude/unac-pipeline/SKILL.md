@@ -61,9 +61,10 @@ digraph unac_pipeline {
     "Gate D: QA verdict" -> "Fase 7: review" [label="approved"];
     "Gate D: QA verdict" -> "Fase 5: execute plan (green)" [label="failed (fix iter ≤ 2)"];
     "Gate D: QA verdict" -> "Fase 8: closure" [label="failed (escalate)"];
-    "Fase 7: review" -> "Gate E: review decision";
-    "Gate E: review decision" -> "Fase 8: closure" [label="approved"];
-    "Gate E: review decision" -> "Fase 7.5: fix blockers" [label="requires changes"];
+    "Fase 7: review" -> "Fase 7: verify-review (adversarial)" [label="consolidar blockers"];
+    "Fase 7: verify-review (adversarial)" -> "Gate E: review decision" [label="surviving-list"];
+    "Gate E: review decision" -> "Fase 8: closure" [label="approved (0 sobreviventes)"];
+    "Gate E: review decision" -> "Fase 7.5: fix blockers" [label="requires changes (≥1 sobrevivente)"];
     "Fase 7.5: fix blockers" -> "Fase 7: review" [label="re-validate"];
 }
 ```
@@ -341,7 +342,7 @@ Invoque a skill `unac-review-implementation` passando o `item-id`. Essa skill ge
 - `Requires Changes` → Fase 7.5 (com a `surviving-list` de blockers verificados)
 
 ### Fase 7.5 — Fix blockers
-Invoque a skill `unac-fix-blockers` passando o `item-id` e a `surviving-list` retornada por `unac-verify-review`. Retornando, invoque novamente `unac-review-implementation` para re-validar. Hard limit: 2 ciclos de fix; após isso, escale.
+Invoque a skill `unac-fix-blockers` passando o `item-id` e a `surviving-list` incluída no retorno da `unac-review-implementation` (que orquestra a `unac-verify-review` internamente). Retornando, invoque novamente `unac-review-implementation` para re-validar. Hard limit: 2 ciclos de fix; após isso, escale.
 
 ### Fase 8 — Closure
 - Resuma ao usuário: tasks implementadas, testes passando, review aprovado, artefatos em `.unac/{item-id}/`.
