@@ -14,7 +14,7 @@ Você é o **controller** (orquestrador) do pipeline unac-agents. Este skill te 
 Você DEVE criar uma TODO (`TodoWrite`) com um item para cada fase e completar em ordem. NUNCA pule fases. NUNCA dispatche múltiplos agents em paralelo neste pipeline — é estritamente serial.
 
 1. **Fase 0 — Intake**: criar/verificar `.unac/constitution.md` (bootstrap do template se ausente); classificar o modo (Texto vs Jira), identificar o `item-id` e o texto original; em Modo JIRA, verificar o MCP Atlassian e ler o card original
-2. **Fase 1 — Product Research**: dispatchar `unac-product-owner` (popula a constitution se estiver vazia/no template)
+2. **Fase 1 — Product Research**: invocar skill `unac-explore` (cria `{item-id}_codebase-context.md` + `_research.md`), depois dispatchar `unac-product-owner` (consome os artefatos da explore; popula a constitution se estiver vazia/no template)
 3. **Gate A — User review** dos artefatos de pesquisa
 4. **Fase 2 — Jira Card**: dispatchar `unac-jira-maker`
 5. **Gate B — User approval** do card ⊕ **clarify** (resolver ambiguidades de AC antes de avançar; em Modo JIRA com MCP ativo, postar o card como comentário no Jira após a aprovação)
@@ -35,14 +35,15 @@ Você DEVE criar uma TODO (`TodoWrite`) com um item para cada fase e completar e
 
 ```dot
 digraph unac_pipeline {
-    "Fase 0: Intake" -> "Fase 1: unac-product-owner" [label="modo texto"];
+    "Fase 0: Intake" -> "Fase 1a: unac-explore" [label="modo texto"];
     "Fase 0: Intake" -> "Fase 0.1: verificar MCP" [label="modo jira"];
     "Fase 0.1: verificar MCP" -> "Fase 0.2: ler card (getJiraIssue)" [label="mcp ativo"];
-    "Fase 0.1: verificar MCP" -> "Fase 1: unac-product-owner" [label="fallback local"];
-    "Fase 0.2: ler card (getJiraIssue)" -> "Fase 1: unac-product-owner";
-    "Fase 1: unac-product-owner" -> "Gate A: review research";
+    "Fase 0.1: verificar MCP" -> "Fase 1a: unac-explore" [label="fallback local"];
+    "Fase 0.2: ler card (getJiraIssue)" -> "Fase 1a: unac-explore";
+    "Fase 1a: unac-explore" -> "Fase 1b: unac-product-owner";
+    "Fase 1b: unac-product-owner" -> "Gate A: review research";
     "Gate A: review research" -> "Fase 2: unac-jira-maker" [label="approve"];
-    "Gate A: review research" -> "Fase 1: unac-product-owner" [label="refine"];
+    "Gate A: review research" -> "Fase 1b: unac-product-owner" [label="refine"];
     "Fase 2: unac-jira-maker" -> "Gate B: approve card";
     "Gate B: approve card" -> "Fase 3: unac-solution-architect" [label="approve"];
     "Gate B: approve card" -> "Jira: addComment" [label="approve + jira/mcp"];
@@ -97,13 +98,32 @@ Na Fase 0 você classifica o input do usuário em um de dois modos. O modo afeta
 - A única escrita no Jira é o comentário do Gate B, e somente após aprovação explícita do usuário.
 - Os workers (PO, jira-maker, etc.) não têm tools de MCP — toda interação com o Jira é feita por você (orquestrador).
 
+## Eixo single-repo / multi-repo
+
+Ortogonal ao Modo Texto/Jira, a pipeline opera em **single-repo (default)** ou **multi-repo**. Single-repo é o comportamento atual, inalterado. O modo multi-repo é **ativado por detecção na Fase 1** — nunca presumido.
+
+**Ativação (checkpoint multi-repo):** ao receber o retorno do `unac-product-owner` (Fase 1b), se `multi-repo-suspected: true`:
+1. Apresente os indícios (`multi-repo-evidence`) e **confirme com o usuário** que o trabalho abrange mais de um repositório. Sem confirmação → siga single-repo.
+2. **Descubra os repos** (você é o orquestrador; workers não descobrem):
+   - Se o usuário já declarou os repos/caminhos → use-os.
+   - Senão, **varra o diretório pai** do repo atual por subdiretórios com `.git` e apresente os candidatos para o usuário confirmar/corrigir.
+   - Se a varredura não achar nada → **pergunte** onde estão.
+3. Crie `.unac/{item-id}/workspace.md` (template em `unac-multirepo`) com cada repo: `id`, `role` (provider/consumer), `path`, `build`, `test`.
+4. Marque `repo-mode = multi`. Daqui em diante, card (Fase 2) e plano/contrato (Fase 3) são cientes de repos, e **as Fases 4.5–7.5 são orquestradas pela skill `unac-multirepo`, repo a repo** (a pipeline delega esse bloco e retoma na Fase 8).
+
+**Guard-rails multi-repo:**
+- ❌ Nunca entre em multi-repo sem confirmação do usuário e sem `workspace.md`.
+- ❌ Nunca toque arquivos fora dos repos registrados no `workspace.md`.
+- Cada repo tem a sua própria `.unac/constitution.md`.
+
 ## Artefatos canônicos de `.unac/`
 
 Os artefatos por-item seguem `{item-id}_<nome-em-kebab>.md`. Há **um artefato global** (não por-item): `.unac/constitution.md`. **Não crie artefatos fora desta lista** (sem placeholders, sem nomes ad-hoc).
 
 | Fase | Artefato | Cria | Lê / Edita |
 |------|----------|------|-----------|
-| 0→1 | `.unac/constitution.md` (**global**) | pipeline (bootstrap), product-owner (popula) | solution-architect, tech-lead, developer, code-reviewer, code-fix |
+| 0→1 | `.unac/constitution.md` (por repo) | pipeline (bootstrap), product-owner (popula) | solution-architect, tech-lead, developer, code-reviewer, code-fix |
+| 1 (multi) | `.unac/{item-id}/workspace.md` | pipeline / unac-multirepo | unac-multirepo, execute-plan, review, fix |
 | 1 | `{item-id}_codebase-context.md` | product-owner | solution-architect |
 | 1 | `{item-id}_research.md` | product-owner | solution-architect |
 | 1 | `{item-id}_user-context.md` | product-owner (jira-maker se ausente) | — |
@@ -115,7 +135,7 @@ Os artefatos por-item seguem `{item-id}_<nome-em-kebab>.md`. Há **um artefato g
 | 7 | `{item-id}_code-review-report.md` | review-implementation | code-reviewer (append), fix-blockers, code-fix (edit) |
 | 7.5 | `{item-id}_fix-report.md` | fix-blockers | code-fix (edit) |
 
-**Campos novos em artefatos existentes:** `jira-card` ganha `## Clarifications needed`; `implementation-plan` ganha `## NFR Matrix`, `## Parallelizable Groups` e `## Traceability Matrix` (AC do card → tasks → testes); `qa-report` registra o estado Red (Fase 4.5) e o Verify (Fase 6).
+**Campos novos em artefatos existentes:** `jira-card` ganha `## Clarifications needed` (e, em multi-repo, `## Repositórios impactados` + `repo` por task/AC); `implementation-plan` ganha `## NFR Matrix`, `## Parallelizable Groups`, `## Traceability Matrix` (AC do card → tasks → testes) e, em multi-repo, `Repo:` por task; `qa-report` registra o estado Red (Fase 4.5) e o Verify (Fase 6). Em multi-repo, `{item-id}_contract.md` ancora a interface cross-repo, e `implementation-progress`/`qa-report`/`code-review-report`/`fix-report` são **sufixados por repo** (`..._<repo>.md`).
 
 ### `.unac/constitution.md` (artefato global)
 
@@ -174,6 +194,21 @@ A constitution carrega os **princípios não-negociáveis do projeto-alvo** e go
    - **0.3 — Componha** `user-request-raw` = `jira-card-raw` + qualquer texto extra colado junto ao link. Defina `item-id = jira-key`. Siga para a Fase 1.
 
 ### Fase 1 — Product Research
+
+#### Fase 1a — Codebase + Web Exploration (unac-explore)
+
+Antes de dispatchar o PO, invoque a skill `unac-explore` para produzir o contexto verificado:
+
+```
+Skill("unac-explore", args: "item-id: {item-id}  context: {user-request-raw}  depth: standard")
+```
+
+Aguarde DONE (ou DONE_WITH_CONCERNS). Os artefatos `.unac/{item-id}/{item-id}_codebase-context.md` e `_research.md` estarão disponíveis para o PO consumir.
+
+> Se `unac-explore` retornar `BLOCKED`, apresente o motivo ao usuário antes de prosseguir — o PO tem fallback próprio mas opera melhor com os artefatos pré-produzidos.
+
+#### Fase 1b — Product Owner (unac-product-owner)
+
 ```
 Agent(
   subagent_type: "unac-product-owner",
@@ -185,6 +220,10 @@ Agent(
     {user-request-raw}
     USER_REQUEST
 
+    Os artefatos de contexto já foram produzidos pela skill unac-explore:
+      - .unac/{item-id}/{item-id}_codebase-context.md
+      - .unac/{item-id}/{item-id}_research.md
+    Leia-os nos Passos 2 e 3 em vez de refazer a varredura.
     Produce the 3 research artefacts in .unac/{item-id}/ and return the handoff-prompt for unac-jira-maker.
   PROMPT
 )
@@ -270,7 +309,9 @@ Apresente os testes vermelhos ao usuário (mapeados aos ACs do card) e confirme 
 - **Ajustar testes** → re-dispatch Fase 4.5 com o feedback.
 
 ### Fase 5 — Execute Plan (Green)
-Invoque a skill `unac-execute-plan` passando o `item-id`. Essa skill injeta o resumo da `constitution.md` e os caminhos dos testes de aceitação existentes no prompt de cada `unac-developer`, gerencia o loop por task (Green + refactor) e **garante a imutabilidade dos testes de aceitação** (compara hash antes/depois). Retorna quando todas as tasks estão `completed`, os testes de aceitação passam e o build global passa.
+**Single-repo:** Invoque a skill `unac-execute-plan` passando o `item-id`. Essa skill injeta o resumo da `constitution.md` e os caminhos dos testes de aceitação existentes no prompt de cada `unac-developer`, gerencia o loop por task (Green + refactor) e **garante a imutabilidade dos testes de aceitação** (compara hash antes/depois). Retorna quando todas as tasks estão `completed`, os testes de aceitação passam e o build global passa.
+
+**Multi-repo** (`repo-mode = multi`): Invoque a skill `unac-multirepo` passando o `item-id`. Ela lê o `workspace.md`, resolve a ordem contract-first, pergunta a estratégia (de-uma-vez/por-etapa) e executa o **ciclo por repo** (Red → Green → QA → Review), reusando `unac-execute-plan`/`unac-review-implementation`/`unac-fix-blockers` com o `repo-path` de cada repo. Engloba as Fases 4.5–7.5 repo a repo e retorna para a Fase 8.
 
 ### Fase 6 — QA (verify)
 ```
@@ -313,6 +354,8 @@ Invoque a skill `unac-fix-blockers` passando o `item-id`. Retornando, invoque no
 - ❌ Derivar testes de aceitação de qualquer fonte que não seja o `jira-card` (nunca dos critérios por-task do plano nem do código)
 - ❌ Iniciar a implementação (Fase 5) antes do Red gate (C.5) aprovar os testes falhando
 - ❌ Editar/ajustar testes de aceitação durante a Fase 5 para fazê-los passar
+- ❌ Entrar em modo multi-repo sem confirmação do usuário e sem `workspace.md`
+- ❌ Tocar arquivos fora dos repos registrados no `workspace.md`
 - ❌ Passar "caminho do arquivo" no lugar de texto completo para os workers
 - ❌ Deixar worker invocar outro worker (workers NÃO têm `Agent` em seus tools)
 - ❌ Continuar após `BLOCKED` sem escalar ao usuário
@@ -326,8 +369,9 @@ Invoque a skill `unac-fix-blockers` passando o `item-id`. Retornando, invoque no
 
 Este skill compõe outros:
 
+- `unac-explore` — pesquisa e verificação de codebase + web (Fase 1a)
 - `unac-execute-plan` — loop de implementação
 - `unac-review-implementation` — loop de review
 - `unac-fix-blockers` — loop de fix
 
-Invocação via `Skill("unac-execute-plan")` etc.
+Invocação via `Skill("unac-explore")`, `Skill("unac-execute-plan")` etc.

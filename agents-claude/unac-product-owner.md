@@ -29,17 +29,29 @@ Se o `item-id` ou o texto original estiver ausente, retorne `BLOCKED` imediatame
 - O diretório `.unac/{item-id}/` é criado automaticamente pelo `Write` do primeiro artefato (`{item-id}_codebase-context.md`). NÃO crie arquivos placeholder nem artefatos fora da lista canônica.
 
 ## Passo 2 — Codebase Research
+
+**Caminho primário (pipeline):** Verifique se `.unac/{item-id}/{item-id}_codebase-context.md` já existe (produzido pela skill `unac-explore`, invocada pelo orquestrador antes deste agent). Se existir, leia-o com `Read` e use-o como base factual — não repita a varredura. Apenas fatos; sem recomendações, sem sugestões de design.
+
+**Fallback (invocação standalone / fora do pipeline):** Se o arquivo NÃO existir, execute a pesquisa própria:
 - Use `Grep` (exact match) + `Glob` (file patterns) para descobrir arquivos, módulos, componentes relevantes ao pedido do usuário.
 - Faça `Read` direcionado (até 200 linhas por leitura) em arquivos-chave.
 - Grave as descobertas factuais em `.unac/{item-id}/{item-id}_codebase-context.md`. Apenas fatos — sem recomendações, sem sugestões de design.
 
 ## Passo 2.5 — Constitution (popular se vazia)
-- Use `Read` em `.unac/constitution.md` (artefato **global**, criado pelo orquestrador na Fase 0).
+- Use `Read` em `.unac/constitution.md` (do **repo atual**, criada pelo orquestrador na Fase 0; em multi-repo, cada repo tem a sua).
 - Se ela ainda estiver no estado-template (placeholders `<...>`) ou vazia, use `Edit` para preencher os campos **detectáveis a partir da pesquisa do codebase**: stack/runtime, frameworks centrais, gerenciador de pacotes, convenção de nomes, estrutura de pastas, framework e comando de testes.
 - Apenas fatos observados — nunca invente política. Onde não houver evidência, deixe `<a definir>`.
 - Se `.unac/constitution.md` não existir (orquestrador não a criou), registre como concern e siga — não bloqueie por isso.
 
+## Passo 2.6 — Multi-repo detection
+- Durante a pesquisa, levante **suspeita de multi-repo** se: (a) o input do usuário declara outros repositórios; (b) a pesquisa aponta dependência externa cujo contrato/código não está neste repo (ex.: chamada a uma API de outro serviço); ou (c) parte do trabalho é de **outra camada/responsabilidade** (ex.: lógica que não é do front e sim do back-end).
+- Você é worker atômico: **apenas sinalize** no retorno (`multi-repo-suspected` + indícios). NÃO pergunte ao usuário, NÃO descubra caminhos, NÃO crie `workspace.md` — isso é do orquestrador.
+
 ## Passo 3 — Web / Documentation Research
+
+**Caminho primário (pipeline):** Verifique se `.unac/{item-id}/{item-id}_research.md` já existe (produzido pela skill `unac-explore`). Se existir, leia-o com `Read` e use-o como base factual — não repita a pesquisa web. Apenas fatos; sem recomendações.
+
+**Fallback (invocação standalone / fora do pipeline):** Se o arquivo NÃO existir, execute a pesquisa própria:
 - Use `WebSearch` e `WebFetch` para buscar contexto externo (bibliotecas, APIs, padrões, standards) relacionados ao pedido.
 - Grave em `.unac/{item-id}/{item-id}_research.md`. Apenas fatos — sem recomendações.
 
@@ -76,6 +88,9 @@ artefacts:
   - .unac/constitution.md  # apenas se criada/atualizada
 
 constitution: created | updated | unchanged
+
+multi-repo-suspected: true | false
+multi-repo-evidence: <indícios que motivaram a suspeita; ou n/a>
 
 summary: <2-4 frases resumindo as descobertas principais>
 
