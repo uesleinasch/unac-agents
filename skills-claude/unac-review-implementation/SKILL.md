@@ -13,6 +13,7 @@ Você é o **controller de review**. Dispatcha `unac-code-reviewer` uma vez por 
 
 - `item-id` (obrigatório)
 - Artefatos esperados: `{item-id}_implementation-plan.md`, `{item-id}_implementation-progress.md`, `{item-id}_jira-card.md` em `.unac/{item-id}/`
+- `repo-path` (opcional; default: **cwd**) e `repo-id` (opcional) — em multi-repo, revise apenas as tasks daquele repo, leia a constitution e os NFRs **do repo**, e use o report sufixado por repo (`{item-id}_code-review-report_<repo>.md`). Sem `repo-path`, comportamento single-repo idêntico ao atual.
 
 ## Checklist
 
@@ -105,11 +106,16 @@ Após todas as tasks revisadas:
    - ✅ Positive highlights (total)
    - ⚖️ Violações de constitution (total)
    - 📐 Gaps de NFR auditável (total)
-3. Determine **Overall result**:
-   - Se qualquer 🔴 → `🚫 Requires Changes`
+3. **Verificação adversarial dos blockers** — ANTES de declarar o overall result, invoque:
+   ```
+   Skill("unac-verify-review", args: "item-id: {item-id}  report-path: .unac/{item-id}/{item-id}_code-review-report.md")
+   ```
+   Use a `surviving-list` retornada como a lista canônica de 🔴 blockers. Blockers downgraded são descartados do overall result e do handoff para `unac-fix-blockers`.
+4. Determine **Overall result** (baseado nos **blockers sobreviventes** após verificação):
+   - Se `blockers-surviving ≥ 1` → `🚫 Requires Changes`
    - Senão, se qualquer 🟡 → `🔄 Approved with Suggestions`
    - Senão → `✅ Approved`
-4. Use `Edit` no report para append:
+5. Use `Edit` no report para append:
 
 ```markdown
 ---
@@ -149,9 +155,9 @@ Apresente ao usuário:
   Anuncie: "Review aprovado. Sugestões registradas no report."
 
 - **`🚫 Requires Changes`**: apresente:
-  > "Review encontrou {N} blocking issues. Opções: (A) invocar `unac-fix-blockers` skill agora, (B) revisar manualmente, (C) abortar."
+  > "Review encontrou {N} blocking issues sobreviventes (após verificação adversarial). Opções: (A) invocar `unac-fix-blockers` skill agora, (B) revisar manualmente, (C) abortar."
 
-  Se A: invoque `Skill("unac-fix-blockers")` com o `item-id`. Quando retornar, REINVOQUE esta skill (`unac-review-implementation`) para re-validar. **Limite 2 iterações** de review+fix; depois escale.
+  Se A: invoque `Skill("unac-fix-blockers")` com o `item-id` e a `surviving-list` retornada pela `unac-verify-review`. Quando retornar, REINVOQUE esta skill (`unac-review-implementation`) para re-validar. **Limite 2 iterações** de review+fix; depois escale.
 
 ## Red flags
 

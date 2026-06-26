@@ -26,9 +26,9 @@ Você DEVE criar uma TODO (`TodoWrite`) com um item para cada fase e completar e
 11. **Fase 5 — Execute Plan (Green)**: invocar skill `unac-execute-plan` (loop de `unac-developer` por task; testes de aceitação são imutáveis)
 12. **Fase 6 — QA (verify)**: dispatchar `unac-qa-engineer` com `mode: verify` (roda os testes imutáveis + NFRs mensuráveis)
 13. **Gate D — QA verdict decision** (approved → Fase 7; failed → volta à Fase 5 para fix)
-14. **Fase 7 — Review**: invocar skill `unac-review-implementation` (loop de `unac-code-reviewer` por task)
+14. **Fase 7 — Review**: invocar skill `unac-review-implementation` (loop de `unac-code-reviewer` por task; inclui verificação adversarial dos blockers via `unac-verify-review` antes de declarar overall result — só blockers sobreviventes alimentam o Gate E e a Fase 7.5)
 15. **Gate E — Review decision** (Approved → Fase 8; Requires Changes → Fase 7.5)
-16. **Fase 7.5 — Fix Blockers**: invocar skill `unac-fix-blockers` (loop de `unac-code-fix` por issue 🔴) → re-executar Fase 7
+16. **Fase 7.5 — Fix Blockers**: invocar skill `unac-fix-blockers` com a `surviving-list` de blockers verificados (loop de `unac-code-fix` por issue 🔴) → re-executar Fase 7
 17. **Fase 8 — Closure**: confirmar artefatos finais e apresentar sumário ao usuário
 
 ## Flow diagram
@@ -334,14 +334,14 @@ Agent(
 - `failed` + `fix-iteration >= 2` → escale ao usuário.
 
 ### Fase 7 — Review
-Invoque a skill `unac-review-implementation` passando o `item-id`. Essa skill gerencia o loop de `unac-code-reviewer` por task.
+Invoque a skill `unac-review-implementation` passando o `item-id`. Essa skill gerencia o loop de `unac-code-reviewer` por task e, antes de declarar o overall result, invoca `unac-verify-review` adversarialmente — apenas blockers sobreviventes à verificação alimentam o Gate E e a Fase 7.5.
 
 ### Gate E — Review decision
 - `Approved` → Fase 8
-- `Requires Changes` → Fase 7.5
+- `Requires Changes` → Fase 7.5 (com a `surviving-list` de blockers verificados)
 
 ### Fase 7.5 — Fix blockers
-Invoque a skill `unac-fix-blockers` passando o `item-id`. Retornando, invoque novamente `unac-review-implementation` para re-validar. Hard limit: 2 ciclos de fix; após isso, escale.
+Invoque a skill `unac-fix-blockers` passando o `item-id` e a `surviving-list` retornada por `unac-verify-review`. Retornando, invoque novamente `unac-review-implementation` para re-validar. Hard limit: 2 ciclos de fix; após isso, escale.
 
 ### Fase 8 — Closure
 - Resuma ao usuário: tasks implementadas, testes passando, review aprovado, artefatos em `.unac/{item-id}/`.
