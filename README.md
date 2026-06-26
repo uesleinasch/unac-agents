@@ -41,30 +41,47 @@ npx unac-agents --target=<vscode|claude-code> [--scope=<global|local>] --dry-run
 
 ## Pipeline de agentes
 
-Os agentes foram projetados para trabalhar em sequência, com handoffs explícitos entre cada etapa:
+Os agentes trabalham em sequência, com handoffs explícitos e gates humanos. O fluxo do Claude Code é **test-first**: o `unac-qa-engineer` escreve os testes de aceitação (modo `red`) **antes** da implementação e os valida (modo `verify`) **depois**:
 
 ```
-unac-product-owner
-  └─► unac-solution-architect
-        └─► unac-jira-maker
-              └─► unac-tech-lead
-                    └─► unac-developer
-                          └─► unac-qa-engineer
-                                └─► unac-code-reviewer
+.unac/constitution.md  →  princípios do projeto, lidos por todo o fluxo
+
+unac-product-owner                      (pesquisa + bootstrap da constitution)
+  └─► unac-jira-maker                   (card + ACs em GIVEN/WHEN/THEN + clarify)
+        └─► unac-solution-architect     (plano + NFR matrix + grupos paralelizáveis)
+              └─► unac-tech-lead        (valida + Traceability Matrix: AC→task→teste)
+                    └─► unac-qa-engineer · modo red    (testes de aceitação FALHANDO ◄ Red gate)
+                          └─► unac-developer           (Green: faz passar + refactor)
+                                └─► unac-qa-engineer · modo verify   (roda os testes imutáveis)
+                                      └─► unac-code-reviewer         (+ audita constitution/NFR)
+                                            └─► unac-code-fix        (correções ≤ 10 linhas)
 ```
 
 | Agente | Responsabilidade |
 |--------|-----------------|
-| `unac-product-owner` | Entende o pedido do usuário, pesquisa o codebase e orquestra a criação do card |
-| `unac-solution-architect` | Avalia viabilidade técnica e define diretrizes arquiteturais |
+| `unac-product-owner` | Entende o pedido do usuário, pesquisa o codebase e o contexto web; produz os artefatos de pesquisa |
 | `unac-jira-maker` | Formata o card Jira com critérios de aceitação em GIVEN/WHEN/THEN |
-| `unac-tech-lead` | Produz o plano de implementação detalhado com tarefas e arquivos |
-| `unac-developer` | Implementa o plano, escreve testes unitários e assina o handoff para QA |
-| `unac-qa-engineer` | Valida cada critério de aceitação com testes funcionais; aciona o developer em caso de falha (máx. 2 iterações) |
+| `unac-solution-architect` | Produz o plano de implementação detalhado a partir do card: briefing, arquitetura, tasks, dependências e NFRs |
+| `unac-tech-lead` | Valida o plano existente e decompõe as tasks em unidades developer-ready com critérios verificáveis |
+| `unac-developer` | Implementa cada task para fazer passar os testes de aceitação já escritos (Green), refatora e escreve testes unitários; nunca edita os testes de aceitação |
+| `unac-qa-engineer` | Modo `red`: escreve os testes de aceitação a partir dos ACs do card e confirma que falham (antes da implementação). Modo `verify`: roda os testes imutáveis e emite o veredito (máx. 2 iterações de fix) |
 | `unac-code-reviewer` | Revisa qualidade, segurança e aderência ao plano; produz relatório de revisão |
-| `unac-code-fix` | Agente auxiliar que aplica correções pontuais quando acionado pelo reviewer |
+| `unac-code-fix` | Agente auxiliar que aplica correções pontuais (≤ 10 linhas) por issue 🔴 BLOCKING quando acionado |
 
-Cada agente grava seus artefatos em `.unac/{item-id}/` e só avança quando os gates de fase passam.
+Cada agente grava seus artefatos em `.unac/{item-id}/` seguindo a convenção canônica `{item-id}_<nome-em-kebab>.md` (ex.: `PROJ-123_implementation-plan.md`, `PROJ-123_qa-report.md`) e só avança quando os gates de fase passam. A lista canônica completa — qual artefato cada fase cria, lê e edita — é a fonte da verdade em `skills-claude/unac-pipeline/SKILL.md`; não crie artefatos fora dessa lista (sem placeholders, sem nomes ad-hoc).
+
+### Fluxo spec-driven + test-first (Claude Code)
+
+O fluxo orquestrado do Claude Code (skills em `skills-claude/`) é **spec-driven** e **test-first**:
+
+- **Constitution** — o arquivo **global** `.unac/constitution.md` guarda os princípios não-negociáveis do projeto (stack, convenções, política de testes, segurança). É criado no início do fluxo e respeitado por `solution-architect`, `tech-lead`, `developer`, `code-reviewer` e `code-fix`.
+- **Test-first (Red → Green → Refactor)** — antes de qualquer implementação, o `unac-qa-engineer` (modo `red`) escreve os testes de aceitação derivados dos critérios do card e confirma que **falham**; um gate humano aprova esses testes vermelhos; só então o `unac-developer` implementa para fazê-los passar (Green) e refatora. Os testes de aceitação são **imutáveis** durante a implementação (verificação por hash) e o QA (modo `verify`) os executa ao final.
+- **O `jira-card` é a fonte única de verdade dos testes de aceitação** — nunca os critérios técnicos por-task do plano.
+- **Traceability Matrix** — o `unac-tech-lead` mapeia cada critério do card → task → teste; a aprovação do plano só passa com cobertura completa.
+- **Clarify** — ambiguidades nos critérios são resolvidas na aprovação do card, antes da arquitetura.
+- **NFR Matrix** — requisitos não-funcionais são classificados em mensuráveis (testados pelo QA) e auditáveis (revisados pelo `code-reviewer`).
+
+> Disponível hoje no fluxo do Claude Code (`skills-claude/`). A paridade no fluxo VS Code está planejada.
 
 ---
 
@@ -185,7 +202,7 @@ npm run release
 ```bash
 # Volte para a raiz do repositório
 cd ../..
-git add agents/ skills/ packages/unac-agents/
+git add agents-vscode/ agents-claude/ skills-shared/ skills-claude/ packages/unac-agents/
 git commit -m "release: bump unac-agents to vX.Y.Z"
 git push
 ```
@@ -198,7 +215,18 @@ Ao executar `npx unac-agents`:
 
 1. Verifica Node.js >= 18.
 2. Exibe banner com a versão do pacote.
-3. Se `~/.copilot` existir com conteúdo, move para `~/.copilot-backup-<ISO-timestamp>` (mantém no máximo 3 backups; o mais antigo é removido automaticamente).
-4. Copia `assets/agents/` → `~/.copilot/agents/`.
-5. Copia `assets/skills/` → `~/.copilot/skills/`.
-6. Exibe resumo com contagem de agentes e skills instalados.
+3. Pergunta o alvo (VS Code ou Claude Code) — ou usa as flags `--target`/`--scope`.
+
+**Alvo VS Code:**
+
+4. Se `~/.copilot` existir com conteúdo, move para `~/.copilot-backup-<ISO-timestamp>` (mantém no máximo 3 backups; o mais antigo é removido automaticamente).
+5. Copia `assets/agents-vscode/` → `~/.copilot/agents/` e `assets/skills-shared/` → `~/.copilot/skills/`.
+6. Instala o servidor `interactive-mcp` local e configura o `mcp.json`.
+
+**Alvo Claude Code** (escopo global `~/.claude/` ou local `<repo>/.claude/`):
+
+4. Copia `assets/agents-claude/` → `<claudeDir>/agents/` (overlay cirúrgico, não apaga nada existente).
+5. Copia `assets/skills-shared/` + `assets/skills-claude/` → `<claudeDir>/skills/`.
+6. Não instala MCP — os agentes atômicos do Claude Code não dependem da ponte interativa do Copilot.
+
+Ao final, exibe resumo com a contagem de agentes e skills instalados.
