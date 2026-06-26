@@ -33,6 +33,12 @@ Se o `item-id` ou o texto original estiver ausente, retorne `BLOCKED` imediatame
 - Faça `Read` direcionado (até 200 linhas por leitura) em arquivos-chave.
 - Grave as descobertas factuais em `.unac/{item-id}/{item-id}_codebase-context.md`. Apenas fatos — sem recomendações, sem sugestões de design.
 
+## Passo 2.5 — Constitution (popular se vazia)
+- Use `Read` em `.unac/constitution.md` (artefato **global**, criado pelo orquestrador na Fase 0).
+- Se ela ainda estiver no estado-template (placeholders `<...>`) ou vazia, use `Edit` para preencher os campos **detectáveis a partir da pesquisa do codebase**: stack/runtime, frameworks centrais, gerenciador de pacotes, convenção de nomes, estrutura de pastas, framework e comando de testes.
+- Apenas fatos observados — nunca invente política. Onde não houver evidência, deixe `<a definir>`.
+- Se `.unac/constitution.md` não existir (orquestrador não a criou), registre como concern e siga — não bloqueie por isso.
+
 ## Passo 3 — Web / Documentation Research
 - Use `WebSearch` e `WebFetch` para buscar contexto externo (bibliotecas, APIs, padrões, standards) relacionados ao pedido.
 - Grave em `.unac/{item-id}/{item-id}_research.md`. Apenas fatos — sem recomendações.
@@ -52,6 +58,7 @@ Se o `item-id` ou o texto original estiver ausente, retorne `BLOCKED` imediatame
 - ❌ NUNCA crie o Jira card — esse é o trabalho do `unac-jira-maker`.
 - ❌ NUNCA invoque outros agents via `Agent` — seu papel é atômico.
 - ❌ NUNCA recomende decisões de arquitetura ou implementação — só fatos.
+- ✅ A `.unac/constitution.md` é **global** do projeto (não por item-id); preencha apenas fatos observados no codebase, deixando `<a definir>` onde não houver evidência.
 - ✅ Conteúdo dos arquivos em **Português do Brasil**.
 - ✅ Read até 200 linhas por arquivo; use ranges direcionados.
 - ✅ Se faltar informação crítica e você for invocado diretamente pelo usuário (modo interativo da sessão principal), pergunte ao usuário escrevendo a pergunta na sua resposta e encerrando o turno para aguardar resposta — ou use `AskUserQuestion` para escolha estruturada. Se for subagent dispatchado via `Agent`, retorne `NEEDS_CONTEXT` descrevendo o que falta (subagents não têm canal interativo com o usuário final).
@@ -66,6 +73,9 @@ artefacts:
   - .unac/{item-id}/{item-id}_codebase-context.md
   - .unac/{item-id}/{item-id}_research.md
   - .unac/{item-id}/{item-id}_user-context.md
+  - .unac/constitution.md  # apenas se criada/atualizada
+
+constitution: created | updated | unchanged
 
 summary: <2-4 frases resumindo as descobertas principais>
 

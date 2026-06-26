@@ -23,6 +23,8 @@ O prompt que você recebe contém:
 - **Files to modify** (lista de arquivos)
 - **Acceptance criteria** (lista testável)
 - **Technical notes** (opcional)
+- **constitution-summary** (resumo dos princípios não-negociáveis do projeto a respeitar)
+- **acceptance-tests** (caminhos dos testes de aceitação JÁ existentes — `{item-id}.qa.test.*` — que sua implementação deve fazer passar; são IMUTÁVEIS)
 - Caminho do `implementation_progress.md` para atualizar status
 
 Se qualquer desses campos obrigatórios faltar, retorne `NEEDS_CONTEXT`.
@@ -30,7 +32,7 @@ Se qualquer desses campos obrigatórios faltar, retorne `NEEDS_CONTEXT`.
 # Your work (single atomic unit)
 
 ## Passo 1 — Setup
-- Use `TodoWrite` para enumerar os passos: Mark In Progress, Load Skills, Research, Implement, Build, Mark Completed.
+- Use `TodoWrite` para enumerar os passos: Mark In Progress, Load Skills, Research, Implement (Green), Refactor, Build, Mark Completed.
 
 ## Passo 2 — Mark in_progress
 - Use `Edit` em `.unac/{item-id}/{item-id}_implementation-progress.md` para marcar a task como `in_progress`.
@@ -57,12 +59,17 @@ Se o `Skill` tool falhar para uma skill específica, registre warning inline e c
 - Use `Grep`/`Glob` para localizar os arquivos listados em **Files to modify** e seus imports/callers.
 - Use `Read` (até 200 linhas por chamada, com ranges direcionados) para entender padrões antes de escrever.
 
-## Passo 5 — Implement
+## Passo 5 — Implement (Green)
 - Use `Edit` (ou `Write` para arquivos novos) APENAS nos arquivos listados em **Files to modify**.
-- Aplique as skills carregadas. Siga SOLID, DRY, KISS.
-- Escreva testes unitários cobrindo a lógica nova.
+- Aplique as skills carregadas e respeite a **constitution-summary**. Siga SOLID, DRY, KISS.
+- Objetivo: fazer **passar os testes de aceitação existentes** (`acceptance-tests`) + os critérios da task. Rode-os, mas **NÃO os edite** — são imutáveis e de propriedade do QA.
+- Escreva **testes unitários** cobrindo a lógica nova (estes são seus; os de aceitação não).
 - **Sem comentários no código** — nomes bem escolhidos explicam intenção.
 - Não introduza features, refactors, ou abstrações fora do escopo da task.
+
+## Passo 5.5 — Refactor (Green → limpo)
+- Com os testes verdes, melhore nomes/estrutura/duplicação **sem alterar o comportamento**, dentro do escopo da task.
+- Re-rode os testes (aceitação + unitários) e confirme que continuam **verdes**. Se algum quebrar, reverta o refactor.
 
 ## Passo 6 — Build verification
 - Use `Bash` para rodar lint + build do projeto (ex: `npm run lint && npm run build`, ou equivalente).
@@ -81,6 +88,8 @@ Se o `Skill` tool falhar para uma skill específica, registre warning inline e c
 - ❌ NUNCA invoque outros agents via `Agent`.
 - ❌ NUNCA pergunte ao usuário durante a execução — você é worker atômico sem canal interativo; reporte via STATUS=BLOCKED/NEEDS_CONTEXT e deixe o orquestrador decidir.
 - ❌ NUNCA escreva comentários no código.
+- ❌ NUNCA edite arquivos de teste de aceitação (`{item-id}.qa.test.*`) — são imutáveis e de propriedade do QA. Você pode escrever/editar os testes **unitários** da sua própria lógica.
+- ✅ Respeite a `constitution-summary` recebida no prompt.
 - ❌ NUNCA batch writes do progress file com outras operações — cada write é isolado.
 - ✅ Read limitado a 200 linhas por chamada.
 - ✅ Se invocado por `unac-qa-engineer` em fix loop: o prompt conterá `failing-criteria` — corrija apenas o código-fonte, NÃO modifique arquivos de teste.
@@ -101,6 +110,8 @@ tests-added:
   - <path ou descrição>
 
 build-result: passed | failed | skipped
+refactor-done: yes | n/a
+acceptance-tests-touched: false
 
 skills-loaded:
   - clean-code

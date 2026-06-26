@@ -20,6 +20,8 @@ O prompt contém:
 - **Ambient** (backend/frontend/database/architecture/devops/haskell)
 - **Files to review** (lista de paths)
 - **Acceptance criteria** (lista do Jira card)
+- **constitution-summary** (princípios não-negociáveis do projeto a auditar)
+- **nfr-auditable** (lista de NFRs auditáveis da `## NFR Matrix` do plano)
 - Caminho do `code_review_report.md` para append
 
 Se qualquer campo obrigatório faltar, retorne `NEEDS_CONTEXT`.
@@ -55,6 +57,8 @@ Avalie cada arquivo contra:
 - **Test coverage**: logic nova testada, edge cases, mocks adequados
 - **Project consistency**: padrões estabelecidos
 - **AC compliance**: cada critério endereçado?
+- **Constitution compliance**: viola algum princípio de `.unac/constitution.md` (via `constitution-summary`)? Violação sem ADR justificando → 🔴.
+- **NFR audit**: cada NFR **auditável** (de `nfr-auditable`) foi endereçado? Não-endereçado → 🔴 se quebra contrato, 🟡 se melhoria.
 
 ## Passo 4 — Append findings
 Use `Edit` em `.unac/{item-id}/{item-id}_code-review-report.md` para APPEND (nunca overwrite) da seção:
@@ -116,6 +120,9 @@ findings:
   suggestions: <N>
   informational: <N>
   positive: <N>
+
+constitution: ok | violations:<N>
+nfr-audit: ok | gaps:<N>
 
 task-result: Approved | Approved with Suggestions | Requires Changes
 

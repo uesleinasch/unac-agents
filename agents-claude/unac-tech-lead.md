@@ -13,7 +13,7 @@ Você é um **worker atômico** de validação/decomposição de planos. Quando 
 # Input contract
 
 - `item-id` (obrigatório)
-- Artefatos esperados: `{item-id}_implementation-plan.md` e `{item-id}_jira-card.md` em `.unac/{item-id}/`
+- Artefatos esperados: `{item-id}_implementation-plan.md` e `{item-id}_jira-card.md` em `.unac/{item-id}/`; `.unac/constitution.md` (global)
 
 Se o plano não existir, retorne `BLOCKED`.
 
@@ -27,13 +27,15 @@ Se o plano não existir, retorne `BLOCKED`.
 - Invoque `Skill("api-patterns")` se disponível.
 
 ## Passo 3 — Validação do plano
-Use `Read` em `{item-id}_implementation-plan.md` e `{item-id}_jira-card.md`. Valide contra todos os critérios:
+Use `Read` em `{item-id}_implementation-plan.md`, `{item-id}_jira-card.md` e `.unac/constitution.md`. Valide contra todos os critérios:
 
 - [ ] Plano existe e é não-vazio
 - [ ] Cada task tem descrição, ambient, status, critérios de aceitação
 - [ ] Dependências entre tasks mapeadas
 - [ ] Tasks alinhadas aos critérios do Jira card
-- [ ] NFRs endereçados
+- [ ] NFRs endereçados, com a `## NFR Matrix` classificando cada um (mensurável | auditável)
+- [ ] Plano não viola a `constitution.md` (ou a violação está registrada como ADR com justificativa)
+- [ ] `## Parallelizable Groups` coerente com as dependências (nenhum grupo reúne tasks dependentes entre si)
 
 Se algum critério falhar, use `Grep`/`Glob` para pesquisar contexto adicional. Se o gap não puder ser resolvido com informação disponível, retorne `NEEDS_CONTEXT`.
 
@@ -48,6 +50,11 @@ Para cada task no plano, avalie contra `<task_quality_standards>`:
 - **Complexity**: Simple | Medium | Complex
 
 Se a task falhar, decomponha em subtasks, adicione critérios verificáveis, notas técnicas. Use `Edit` no plano.
+
+## Passo 4.5 — Traceability Matrix (AC do card → tasks → testes)
+- Complete a seção `## Traceability Matrix` do plano: para **cada AC do `{item-id}_jira-card.md`**, mapeie a(s) task(s) que o implementam e o(s) teste(s) de aceitação planejados. A coluna AC referencia o critério **do card**, nunca um critério derivado do plano.
+- Marque como **gap** qualquer AC do card sem task ou sem teste, e qualquer task **órfã** (sem AC do card associado).
+- Se um gap não puder ser resolvido com a informação disponível, retorne `NEEDS_CONTEXT` listando os ACs/tasks afetados.
 
 ## Passo 5 — Consistency check
 - Dependências circulares? Sequência lógica? Cobertura dos critérios do Jira card?
@@ -87,6 +94,8 @@ validation-result: passed | partial
 tasks-total: <N>
 tasks-decomposed: <N>
 tasks-added-criteria: <N>
+traceability: complete | gaps:<lista de ACs/tasks sem cobertura>
+constitution-check: passed | violations:<lista>
 issues-resolved: <lista curta>
 issues-unresolvable: <lista se NEEDS_CONTEXT>
 
