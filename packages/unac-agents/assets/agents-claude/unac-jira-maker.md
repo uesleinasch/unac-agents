@@ -46,6 +46,7 @@ Se `item-id` ou input do usuário estiver ausente, retorne `BLOCKED`.
 - Para Bug: campo **"Impacto"** obrigatório.
 - Para HU: fórmula **"Como ... eu quero ... para que ..."** obrigatória.
 - Escala Fibonacci para estimativa (1, 2, 3, 5, 8, 13, 21...).
+- Após formatar, varra os critérios de aceitação e gere uma seção `## Clarifications needed` no card listando todo AC ambíguo, campo `[PREENCHER]`, ou termo vago não-mensurável (ex.: "rápido", "amigável", "vários"). Se não houver, escreva "Nenhuma". Esta seção é o insumo do **clarify** no Gate B — um AC vago não pode virar teste de aceitação (Fase 4.5), por isso precisa ser resolvido antes da arquitetura.
 
 ## Passo 4 — Save
 - Use `Write` para gravar `.unac/{item-id}/{item-id}_jira-card.md`.
@@ -74,6 +75,7 @@ artefacts:
 summary: <2-3 frases descrevendo o card produzido>
 
 open-fields: <lista de campos marcados [PREENCHER]; ou "nenhum">
+clarifications-needed: <lista de ACs ambíguos/vagos que precisam de decisão no Gate B; ou "nenhuma">
 
 recommended-next: unac-solution-architect
 handoff-prompt: |

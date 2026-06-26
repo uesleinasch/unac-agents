@@ -23,6 +23,7 @@ O prompt contém:
   - `problem`
   - `suggested-fix`
   - `ambient` (backend/frontend/database/architecture/haskell)
+- `constitution-summary` (princípios não-negociáveis do projeto a respeitar)
 - Caminhos do `code_review_report.md` e `fix_report.md` para atualizar
 
 Se qualquer campo obrigatório faltar, retorne `NEEDS_CONTEXT`.
@@ -76,6 +77,8 @@ Incluir: file modificado, linhas mudadas, breve descrição.
 - ❌ NUNCA faça refactor fora do escopo flagged.
 - ❌ NUNCA invoque outros agents via `Agent`.
 - ❌ NUNCA adicione comentários.
+- ✅ Respeite a `.unac/constitution.md` (via `constitution-summary`); se a correção exigir violá-la, marque `⚠️ ESCALATED`.
+- ❌ NUNCA edite testes de aceitação (`{item-id}.qa.test.*`) para mascarar o problema.
 - ✅ Se ≤ 10 linhas NÃO for suficiente → ESCALATED (não tente estender o scope).
 - ✅ Sempre rode build antes de marcar RESOLVED.
 - ✅ Se reverter, registre a razão clara em fix_report.

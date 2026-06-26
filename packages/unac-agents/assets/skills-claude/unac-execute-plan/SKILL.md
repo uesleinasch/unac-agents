@@ -27,7 +27,9 @@ Crie TODO items para:
 ## Passo 1 — Setup
 
 1. **Leia o plano UMA vez**: `Read` em `.unac/{item-id}/{item-id}_implementation-plan.md`.
-2. **Extraia cada task em memória** (estrutura de dados): para cada task, capture:
+2. **Leia a constitution**: `Read` em `.unac/constitution.md` e produza um `constitution-summary` curto (princípios que afetam a implementação) para injetar nos prompts.
+3. **Localize os testes de aceitação** (escritos na Fase 4.5): use o `{item-id}_qa-report.md` e/ou a `## Traceability Matrix` do plano para listar os arquivos `{item-id}.qa.test.*`. **Calcule e guarde o hash** de cada um (via `Bash`: `git hash-object <arquivo>` ou `sha256sum <arquivo>`). Esse baseline detecta adulteração.
+4. **Extraia cada task em memória** (estrutura de dados): para cada task, capture:
    - `task-number`
    - `description` (texto completo)
    - `ambient`
@@ -35,8 +37,9 @@ Crie TODO items para:
    - `acceptance-criteria` (lista)
    - `technical-notes`
    - `subtasks` (se houver)
-3. **Crie o progress file** via `Write` em `.unac/{item-id}/{item-id}_implementation-progress.md` com todas as tasks listadas como `pending` (template abaixo).
-4. **Crie TodoWrite** com 1 todo por task.
+5. **Registre os Parallelizable Groups** do plano no progress file (apenas informativo — a execução é serial por ora).
+6. **Crie o progress file** via `Write` em `.unac/{item-id}/{item-id}_implementation-progress.md` com todas as tasks listadas como `pending` (template abaixo).
+7. **Crie TodoWrite** com 1 todo por task.
 
 ### Progress file template
 
@@ -99,7 +102,14 @@ Agent(
     ## Subtasks
     {se houver}
 
-    Implement ONLY this task. Mark progress file and plan file on start/completion.
+    ## Constitution (resumo — respeite)
+    {constitution-summary}
+
+    ## Acceptance tests (JÁ existentes — IMUTÁVEIS — faça-os passar, não os edite)
+    {lista de caminhos {item-id}.qa.test.*}
+
+    Implement ONLY this task (Green: faça os testes de aceitação acima passarem; depois refatore mantendo-os verdes).
+    Do NOT edit acceptance test files. Mark progress file and plan file on start/completion.
     Return closed status (DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT).
   PROMPT
 )
@@ -118,14 +128,17 @@ Parse o STATUS do retorno:
 
 **Verificação pós-dispatch**: após cada DONE, use `Read` em `{item-id}_implementation-progress.md` e confirme a task marcada `completed`. Se não estiver, trate como BLOCKED.
 
+**Verificação de imutabilidade dos testes**: após cada DONE, recalcule o hash de cada `{item-id}.qa.test.*` e compare com o baseline do Passo 1. Se algum mudou, o developer adulterou um teste de aceitação para passar → trate como **BLOCKED**, reverta a alteração do teste e escale ao usuário.
+
 ## Passo 3 — Global build verification
 
 Após TODAS as tasks marcarem `completed`:
 
-- Use `Bash` para rodar `npm run build && npm run lint` (ou equivalente).
-- Se falhar:
+- Use `Bash` para rodar `npm run build && npm run lint` (ou equivalente) **e os testes de aceitação** (`{item-id}.qa.test.*`).
+- **Revalide o hash** de cada teste de aceitação contra o baseline do Passo 1 — devem estar idênticos.
+- Se falhar (build/lint, teste de aceitação vermelho, ou hash divergente):
   - Identifique a task/arquivo responsável.
-  - Re-dispatch `unac-developer` com prompt de fix (`failing-files: [...]`, `lint-output: ...`).
+  - Re-dispatch `unac-developer` com prompt de fix (`failing-files: [...]`, `lint-output: ...`) — **nunca** "consertar" editando o teste de aceitação.
   - Max 2 retries globais.
 - Se passar:
   - Use `Edit` em `{item-id}_implementation-progress.md` adicionando:
@@ -142,7 +155,8 @@ Anuncie ao usuário:
 
 ## Red flags
 
-- ❌ Dispatch paralelo de múltiplos `unac-developer` (tasks podem conflitar em arquivos)
+- ❌ Dispatch paralelo de múltiplos `unac-developer` (serial por ora; os Parallelizable Groups do plano são apenas mapeados — execução paralela via git worktrees é evolução futura)
+- ❌ Deixar o developer editar testes de aceitação (`{item-id}.qa.test.*`) — verifique o hash após cada DONE
 - ❌ Fazer o subagent reler o plano (passe texto completo no prompt)
 - ❌ Perguntar ao usuário entre cada task (serial mas sem gate humano)
 - ❌ Pular a verificação do progress file após cada DONE

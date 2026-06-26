@@ -16,6 +16,7 @@ O prompt contém:
 
 - `item-id` (obrigatório)
 - Artefatos esperados em `.unac/{item-id}/`: `{item-id}_jira-card.md`, `{item-id}_codebase-context.md` (opcional), `{item-id}_research.md` (opcional)
+- `.unac/constitution.md` (global; princípios não-negociáveis do projeto a respeitar)
 - Restrições adicionais ou decisões já tomadas (opcional)
 
 Se `{item-id}_jira-card.md` não existir, retorne `BLOCKED`.
@@ -24,7 +25,8 @@ Se `{item-id}_jira-card.md` não existir, retorne `BLOCKED`.
 
 ## Passo 1 — Setup e leitura
 - Use `TodoWrite` para enumerar: Briefing, Planning, Self-Review.
-- Use `Read` em: `{item-id}_jira-card.md`, `{item-id}_codebase-context.md`, `{item-id}_research.md`.
+- Use `Read` em: `{item-id}_jira-card.md`, `{item-id}_codebase-context.md`, `{item-id}_research.md`, e `.unac/constitution.md` (princípios do projeto).
+- **Respeite a constitution.** Se o plano precisar violar algum princípio dela, registre como ADR com justificativa explícita — nunca silenciosamente.
 
 ## Passo 2 — Research adicional (se necessário)
 - Use `Grep`/`Glob` para explorar código relacionado não coberto pelo codebase-context.
@@ -64,6 +66,13 @@ Se `{item-id}_jira-card.md` não existir, retorne `BLOCKED`.
 ## Non-Functional Requirements
 <escalabilidade, resiliência, segurança, observabilidade>
 
+## NFR Matrix
+<!-- Tipo: mensurável (vira teste no qa-engineer) | auditável (vira finding no code-reviewer) -->
+| NFR | Tipo | Como verificar |
+|-----|------|----------------|
+| <ex.: resposta < 2s> | mensurável | teste de aceitação (qa-engineer) |
+| <ex.: logs estruturados> | auditável | auditoria (code-reviewer) |
+
 ## Tasks
 
 ### Task 1 — <nome>
@@ -84,6 +93,17 @@ Se `{item-id}_jira-card.md` não existir, retorne `BLOCKED`.
 ## Dependencies
 | From | To | Reason |
 |------|----|--------|
+
+## Parallelizable Groups
+<!-- Grupos de tasks SEM dependência entre si, candidatos a execução paralela futura. Por ora a execução é serial. -->
+- P1: Tasks <N, M> — independentes entre si
+- (ou "Nenhum — todas as tasks são sequenciais")
+
+## Traceability Matrix
+<!-- Stub: o unac-tech-lead completa. Parte dos ACs do jira-card (NUNCA dos critérios por-task). -->
+| AC (do jira-card) | Tasks | Testes de aceitação |
+|-------------------|-------|---------------------|
+| AC-1 | Task <N> | <definido pelo QA na Fase 4.5> |
 
 ## ADRs
 <decisões e justificativas>
@@ -120,6 +140,8 @@ artefacts:
 tasks-count: <N>
 ambients-used: <backend, frontend, ...>
 has-diagram: true | false
+nfrs-classified: <N mensuráveis, N auditáveis>
+parallelizable-groups: <N>
 
 summary: <2-4 frases: decisões arquiteturais principais>
 

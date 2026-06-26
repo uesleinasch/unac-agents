@@ -23,9 +23,9 @@ Você é o **controller de review**. Dispatcha `unac-code-reviewer` uma vez por 
 
 ## Passo 1 — Setup
 
-1. `Read` em `{item-id}_implementation-plan.md`, `{item-id}_implementation-progress.md`, `{item-id}_jira-card.md`.
+1. `Read` em `{item-id}_implementation-plan.md`, `{item-id}_implementation-progress.md`, `{item-id}_jira-card.md` e `.unac/constitution.md`.
 2. Extraia em memória cada task: `task-number`, `description`, `ambient`, `files-to-modify`, `acceptance-criteria`.
-3. Extraia ACs do Jira card.
+3. Extraia os ACs do Jira card, um `constitution-summary` curto, e os **NFRs auditáveis** da `## NFR Matrix` do plano.
 4. Verifique `status: ready-for-review` no progress file. Se não, apresente warning mas pode prosseguir se o usuário confirmar.
 5. Use `Write` para criar `.unac/{item-id}/{item-id}_code-review-report.md`:
 
@@ -74,7 +74,14 @@ Agent(
     ## Acceptance Criteria (do Jira card)
     {lista}
 
+    ## Constitution (resumo — audite aderência)
+    {constitution-summary}
+
+    ## NFRs auditáveis (da NFR Matrix do plano)
+    {lista}
+
     Review this task only. Append findings section to report-path.
+    Inclua os eixos Constitution compliance e NFR audit.
     Return closed status (DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT).
   PROMPT
 )
@@ -96,6 +103,8 @@ Após todas as tasks revisadas:
    - 🟡 Suggestions (total)
    - 🔵 Informational (total)
    - ✅ Positive highlights (total)
+   - ⚖️ Violações de constitution (total)
+   - 📐 Gaps de NFR auditável (total)
 3. Determine **Overall result**:
    - Se qualquer 🔴 → `🚫 Requires Changes`
    - Senão, se qualquer 🟡 → `🔄 Approved with Suggestions`
@@ -117,6 +126,8 @@ Após todas as tasks revisadas:
 | 🟡 Suggestions | {N} |
 | 🔵 Informational | {N} |
 | ✅ Positive highlights | {N} |
+| ⚖️ Constitution violations | {N} |
+| 📐 NFR audit gaps | {N} |
 
 ### Review History
 | Iteration | Date | Result | Blockers Resolved |
