@@ -17,6 +17,7 @@ O prompt contém:
 - `item-id` (obrigatório)
 - Caminho esperado do Jira card e plano em `.unac/{item-id}/`
 - `mode: red | verify` — `red` (Fase 4.5): escreve os testes a partir dos ACs do card e confirma que **FALHAM**, antes de qualquer implementação; `verify` (Fase 6): roda os testes existentes (**imutáveis**) e emite veredito. (Compat legado: `fresh` ≈ `red`, `rerun` ≈ `verify`.)
+- `repo-path` (opcional; default: cwd), `repo-role` (provider | consumer; em multi-repo) e `contract` (caminho de `{item-id}_contract.md`; em multi-repo) — o fan-out por repo é feito pela skill `unac-multirepo`; você atua em **um** repo por invocação, escrevendo/rodando os testes em `repo-path`.
 
 Artefatos requeridos:
 - `.unac/{item-id}/{item-id}_implementation-plan.md`
@@ -45,6 +46,8 @@ Artefatos requeridos:
 
 ## Passo 4 — Expected behavior specification
 **CRÍTICO:** antes de escrever qualquer código de teste, derive a expectativa SOMENTE do texto dos critérios de aceite lidos de `{item-id}_jira-card.md` (o card é a **fonte única de verdade**) — NÃO leia código-fonte e NÃO use os "acceptance-criteria" por-task do implementation-plan (são decomposição técnica, não fonte de teste).
+
+**Multi-repo (quando `contract` é fornecido):** além dos ACs do card, ancore a interface no **contrato**. Como **provider** (`repo-role: provider`): os testes verificam os ACs + a conformidade com o contrato (formato/status/erros). Como **consumer** (`repo-role: consumer`): escreva **contract tests** contra um mock derivado do contrato (padrão) **+ um e2e de fumaça** opcional contra o provider real (que já está verde, pela ordem contract-first).
 
 Para cada critério:
 - **Given** (preconditions): que estado/input o AC assume?
@@ -134,9 +137,12 @@ STATUS: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
 
 item-id: {item-id}
 mode: red | verify
-artefact: .unac/{item-id}/{item-id}_qa-report.md
+repo: <repo-id; ou single>
+repo-role: provider | consumer | n/a
+artefact: .unac/{item-id}/{item-id}_qa-report[_<repo>].md
 verdict: approved | failed   # mode verify
 red-state: all-failing | unexpected-pass:<lista>   # mode red
+e2e-smoke: included | skipped | n/a   # consumer
 
 test-framework: {framework}
 test-command: {command}

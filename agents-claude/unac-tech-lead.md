@@ -27,14 +27,14 @@ Se o plano não existir, retorne `BLOCKED`.
 - Invoque `Skill("api-patterns")` se disponível.
 
 ## Passo 3 — Validação do plano
-Use `Read` em `{item-id}_implementation-plan.md`, `{item-id}_jira-card.md` e `.unac/constitution.md`. Valide contra todos os critérios:
+Use `Read` em `{item-id}_implementation-plan.md`, `{item-id}_jira-card.md` e `.unac/constitution.md` (em multi-repo, também `.unac/{item-id}/workspace.md` e a constitution de cada repo). Valide contra todos os critérios:
 
 - [ ] Plano existe e é não-vazio
 - [ ] Cada task tem descrição, ambient, status, critérios de aceitação
 - [ ] Dependências entre tasks mapeadas
 - [ ] Tasks alinhadas aos critérios do Jira card
 - [ ] NFRs endereçados, com a `## NFR Matrix` classificando cada um (mensurável | auditável)
-- [ ] Plano não viola a `constitution.md` (ou a violação está registrada como ADR com justificativa)
+- [ ] Plano não viola a `constitution.md` (ou a violação está registrada como ADR com justificativa). **Em multi-repo**, valide cada task contra a constitution do seu `Repo` (`<repo-path>/.unac/constitution.md`)
 - [ ] `## Parallelizable Groups` coerente com as dependências (nenhum grupo reúne tasks dependentes entre si)
 
 Se algum critério falhar, use `Grep`/`Glob` para pesquisar contexto adicional. Se o gap não puder ser resolvido com informação disponível, retorne `NEEDS_CONTEXT`.

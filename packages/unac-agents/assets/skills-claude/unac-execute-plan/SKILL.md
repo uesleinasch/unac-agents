@@ -14,6 +14,7 @@ Você é o **controller de implementação**. Sua responsabilidade é ler o plan
 Você recebe via prompt ou contexto:
 - `item-id` (obrigatório)
 - Plano esperado em `.unac/{item-id}/{item-id}_implementation-plan.md`
+- `repo-path` (opcional; default: **cwd**) e `repo-id` (opcional) — quando informados (modo multi-repo), opere **nesse repo**: implemente apenas as tasks cujo campo `Repo` casa com `repo-id`, rode o build/test daquele repo (definidos em `.unac/{item-id}/workspace.md`) e use a `.unac/constitution.md` **daquele** repo. Os artefatos passam a ser sufixados por repo (`{item-id}_implementation-progress_<repo>.md`) e o hash dos testes de aceitação é calculado sobre os arquivos daquele repo. **Sem `repo-path`, o comportamento é single-repo, idêntico ao atual.**
 
 ## Checklist
 

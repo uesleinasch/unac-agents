@@ -25,7 +25,7 @@ Se `{item-id}_jira-card.md` não existir, retorne `BLOCKED`.
 
 ## Passo 1 — Setup e leitura
 - Use `TodoWrite` para enumerar: Briefing, Planning, Self-Review.
-- Use `Read` em: `{item-id}_jira-card.md`, `{item-id}_codebase-context.md`, `{item-id}_research.md`, e `.unac/constitution.md` (princípios do projeto).
+- Use `Read` em: `{item-id}_jira-card.md`, `{item-id}_codebase-context.md`, `{item-id}_research.md`, e `.unac/constitution.md` (princípios do projeto). Em multi-repo, leia também `.unac/{item-id}/workspace.md` (repos e papéis) e a constitution de cada repo.
 - **Respeite a constitution.** Se o plano precisar violar algum princípio dela, registre como ADR com justificativa explícita — nunca silenciosamente.
 
 ## Passo 2 — Research adicional (se necessário)
@@ -45,6 +45,10 @@ Se `{item-id}_jira-card.md` não existir, retorne `BLOCKED`.
 - Incluir NFRs (escalabilidade, resiliência, segurança, observabilidade).
 - Incluir diagrama Mermaid se a solução envolve múltiplos componentes.
 - Mapear ADRs (Architecture Decision Records) das decisões-chave.
+- **Multi-repo:** marque cada task com seu `repo` (id do workspace), ordene as tasks contract-first (provider antes do consumer) e garanta que a `## Traceability Matrix` e os `## Parallelizable Groups` respeitem o repo (um grupo paralelo não cruza a fronteira de contrato provider→consumer).
+
+## Passo 5.5 — Contract (cross-repo, se multi-repo)
+- Quando o trabalho abrange múltiplos repos, use `Write` para criar `.unac/{item-id}/{item-id}_contract.md` descrevendo a interface entre os repos: endpoints/operações, payloads de request/response, status e erros (referencie OpenAPI/schema existente quando houver). Este contrato é a **âncora dos testes dos dois lados** (provider e consumer) e fixa a ordem contract-first.
 
 ## Passo 6 — Self-review
 - Use `Read` no plano e valide contra a checklist em `<implementation_checklist>` abaixo.
@@ -78,6 +82,7 @@ Se `{item-id}_jira-card.md` não existir, retorne `BLOCKED`.
 ### Task 1 — <nome>
 - **Description:** <o quê, não como>
 - **Ambient:** backend | frontend | database | architecture | devops | haskell
+- **Repo:** <id do repo do workspace; ou n/a em single-repo>
 - **Status:** pending
 - **Complexity:** Simple | Medium | Complex
 - **Acceptance Criteria:**
@@ -142,6 +147,8 @@ ambients-used: <backend, frontend, ...>
 has-diagram: true | false
 nfrs-classified: <N mensuráveis, N auditáveis>
 parallelizable-groups: <N>
+contract: created | n/a
+repos: <lista com papéis (ex.: api=provider, web=consumer); ou single>
 
 summary: <2-4 frases: decisões arquiteturais principais>
 
