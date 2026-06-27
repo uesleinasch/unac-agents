@@ -47,6 +47,8 @@ Os agentes trabalham em sequência, com handoffs explícitos e gates humanos. O 
 .unac/constitution.md  →  princípios do projeto, lidos por todo o fluxo
 
 unac-product-owner                      (pesquisa + bootstrap da constitution)
+  │  ↑ Fase 1: unac-explore faz fan-out paralelo (read-only) de unac-explorer
+  │    + unac-finding-verifier para produzir contexto verificado
   └─► unac-jira-maker                   (card + ACs em GIVEN/WHEN/THEN + clarify)
         └─► unac-solution-architect     (plano + NFR matrix + grupos paralelizáveis)
               └─► unac-tech-lead        (valida + Traceability Matrix: AC→task→teste)
@@ -54,6 +56,8 @@ unac-product-owner                      (pesquisa + bootstrap da constitution)
                           └─► unac-developer           (Green: faz passar + refactor)
                                 └─► unac-qa-engineer · modo verify   (roda os testes imutáveis)
                                       └─► unac-code-reviewer         (+ audita constitution/NFR)
+                                      │   ↑ Fase 7: unac-verify-review verifica adversarialmente
+                                      │     os 🔴 BLOCKING antes de declarar overall result
                                             └─► unac-code-fix        (correções ≤ 10 linhas)
 ```
 
@@ -67,6 +71,8 @@ unac-product-owner                      (pesquisa + bootstrap da constitution)
 | `unac-qa-engineer` | Modo `red`: escreve os testes de aceitação a partir dos ACs do card e confirma que falham (antes da implementação). Modo `verify`: roda os testes imutáveis e emite o veredito (máx. 2 iterações de fix) |
 | `unac-code-reviewer` | Revisa qualidade, segurança e aderência ao plano; produz relatório de revisão |
 | `unac-code-fix` | Agente auxiliar que aplica correções pontuais (≤ 10 linhas) por issue 🔴 BLOCKING quando acionado |
+| `unac-explorer` | Worker read-only de fan-out: coleta fatos do codebase em paralelo (Fase 1, via skill `unac-explore`) |
+| `unac-finding-verifier` | Worker read-only de fan-out: verifica adversarialmente os fatos coletados pelo `unac-explorer` (Fase 1) e os blockers de review (Fase 7, via skill `unac-verify-review`) |
 
 Cada agente grava seus artefatos em `.unac/{item-id}/` seguindo a convenção canônica `{item-id}_<nome-em-kebab>.md` (ex.: `PROJ-123_implementation-plan.md`, `PROJ-123_qa-report.md`) e só avança quando os gates de fase passam. A lista canônica completa — qual artefato cada fase cria, lê e edita — é a fonte da verdade em `skills-claude/unac-pipeline/SKILL.md`; não crie artefatos fora dessa lista (sem placeholders, sem nomes ad-hoc).
 
@@ -82,6 +88,18 @@ O fluxo orquestrado do Claude Code (skills em `skills-claude/`) é **spec-driven
 - **NFR Matrix** — requisitos não-funcionais são classificados em mensuráveis (testados pelo QA) e auditáveis (revisados pelo `code-reviewer`).
 
 > Disponível hoje no fluxo do Claude Code (`skills-claude/`). A paridade no fluxo VS Code está planejada.
+
+### Modo multi-repo (Claude Code)
+
+Quando a investigação (`unac-product-owner`) detecta que o item abrange mais de um repositório (ex.: front + API), a pipeline comuta para o **modo multi-repo**:
+
+- **Detecção e confirmação** — o PO sinaliza a suspeita (declaração do usuário, dependência externa, ou responsabilidade de camada); o orquestrador confirma com você.
+- **Descoberta de repos** — lê o diretório pai em busca de `.git` e sugere candidatos; se não achar, pergunta os caminhos. Tudo registrado em `.unac/{item-id}/workspace.md`.
+- **Contract-first** — o `unac-solution-architect` produz um `{item-id}_contract.md` (a interface entre os repos); o provider é implementado antes do consumer.
+- **Orquestração** — a skill `unac-multirepo` executa o ciclo test-first **por repo** (Red→Green→QA→Review), reusando as skills de execução/review/fix com o caminho de cada repo, sempre subagent-driven.
+- **De uma vez ou por etapa** — você escolhe; "por etapa" tem gate humano entre repos, "de uma vez" encadeia automaticamente. A escolha fica no `workspace.md`.
+
+> Single-repo continua o **default** e permanece inalterado.
 
 ---
 
@@ -105,7 +123,9 @@ unac-agents/
 │   ├── unac-pipeline/             # Meta-flow PO → SA → TL → Dev → QA → Rev → Fix
 │   ├── unac-execute-plan/         # Loop developer por task
 │   ├── unac-review-implementation/ # Loop reviewer por task
-│   └── unac-fix-blockers/         # Loop code-fix por issue 🔴
+│   ├── unac-fix-blockers/         # Loop code-fix por issue 🔴
+│   ├── unac-explore/              # Fan-out paralelo read-only (Fase 1): explorer + verifier
+│   └── unac-verify-review/        # Verificação adversarial de blockers (Fase 7)
 ├── packages/
 │   ├── unac-agents/               # Pacote npm publicável (instalador)
 │   │   ├── bin/install.js
