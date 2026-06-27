@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Convenções de commit
+
+**Não adicione o trailer `Co-Authored-By` do Claude (nem qualquer co-autoria de IA) nas mensagens de commit.** O autor dos commits é o desenvolvedor humano; o Claude não deve constar como contribuidor no histórico git deste repositório.
+
 ## Repository overview
 
 This is a monorepo with two packages and a collection of agent/skill definitions:
