@@ -21,12 +21,12 @@ user-invocable: true
 handoffs:
   - label: "🔍 Re-validate with Code Reviewer"
     agent: unac-code-reviewer
-    prompt: Fixes for task {item-id} have been applied by unac-code-fix (iteration {fix_iteration}). Re-review only the files modified in this fix cycle, listed in `.unac/{item-id}/{item-id}_fix_report.md` under "Modified Files". Update `.unac/{item-id}/{item-id}_code_review_report.md` with the results of this iteration.
+    prompt: Fixes for task {item-id} have been applied by unac-code-fix (iteration {fix_iteration}). Re-review only the files modified in this fix cycle, listed in `.unac/{item-id}/{item-id}_fix-report.md` under "Modified Files". Update `.unac/{item-id}/{item-id}_code-review-report.md` with the results of this iteration.
     send: true
 
   - label: "⬆️ Escalate to Developer"
     agent: unac-developer
-    prompt: unac-code-fix encountered issues in task {item-id} that require structural refactoring beyond the scope of surgical correction. See `.unac/{item-id}/{item-id}_fix_report.md` under "Escalations" for details.
+    prompt: unac-code-fix encountered issues in task {item-id} that require structural refactoring beyond the scope of surgical correction. See `.unac/{item-id}/{item-id}_fix-report.md` under "Escalations" for details.
     send: false
 ---
 
@@ -147,10 +147,10 @@ Each subagent targets only its assigned issue. The parent writes the final summa
   - USE #tool:search/codebase to verify `.unac/{item-id}/` exists.
     - IF not found: RESPOND with error and EXIT.
 
-  - TRY: USE #tool:read to read `.unac/{item-id}/{item-id}_code_review_report.md`
+  - TRY: USE #tool:read to read `.unac/{item-id}/{item-id}_code-review-report.md`
     ON SUCCESS: store as `review_report`
     ON FAILURE:
-      - RESPOND: "Review report not found at `.unac/{item-id}/{item-id}_code_review_report.md`.
+      - RESPOND: "Review report not found at `.unac/{item-id}/{item-id}_code-review-report.md`.
         Run unac-code-reviewer before using this agent."
       - EXIT.
 
@@ -175,11 +175,11 @@ Each subagent targets only its assigned issue. The parent writes the final summa
      ════════════════════════════════════════════════════════════════════ -->
 - Phase 1: Setup
 
-  - TRY: USE #tool:read to read `.unac/{item-id}/{item-id}_implementation_plan.md`
+  - TRY: USE #tool:read to read `.unac/{item-id}/{item-id}_implementation-plan.md`
     ON SUCCESS: note it exists (context for subagents — not read by orchestrator directly)
     ON FAILURE: WARN "implementation_plan.md not found — subagents will proceed without it."
 
-  - USE #tool:edit/createFile to create `.unac/{item-id}/{item-id}_fix_report.md`
+  - USE #tool:edit/createFile to create `.unac/{item-id}/{item-id}_fix-report.md`
     using the <fix_report_template>, pre-populated with:
     - All 🔴 BLOCKING issues listed under "Pending" with their issue-index and reference
     - Fix iteration number
@@ -223,14 +223,14 @@ Each subagent targets only its assigned issue. The parent writes the final summa
       ## Your Assignment
       - Item ID: {item-id}
       - Issue index to fix: {issue-index}
-      - Review report: .unac/{item-id}/{item-id}_code_review_report.md
-      - Fix report (update your result here): .unac/{item-id}/{item-id}_fix_report.md
-      - Implementation plan (context only): .unac/{item-id}/{item-id}_implementation_plan.md
+      - Review report: .unac/{item-id}/{item-id}_code-review-report.md
+      - Fix report (update your result here): .unac/{item-id}/{item-id}_fix-report.md
+      - Implementation plan (context only): .unac/{item-id}/{item-id}_implementation-plan.md
 
       ## Instructions — execute strictly in order:
 
       ### A — READ THE REVIEW REPORT
-      Read `.unac/{item-id}/{item-id}_code_review_report.md` in full.
+      Read `.unac/{item-id}/{item-id}_code-review-report.md` in full.
       Locate issue number {issue-index} among the 🔴 BLOCKING items.
       Extract: file path, line number, problem description, suggested fix.
       Do NOT proceed until you have confirmed the issue exists in the report.
@@ -271,13 +271,13 @@ Each subagent targets only its assigned issue. The parent writes the final summa
         Return immediately with status = failed.
 
       ### F — UPDATE FIX REPORT
-      Edit `.unac/{item-id}/{item-id}_fix_report.md`:
+      Edit `.unac/{item-id}/{item-id}_fix-report.md`:
       Mark issue {issue-index} as ✅ RESOLVED.
       Include: file modified, lines changed, brief description of the correction.
       Read the file back and confirm the update is present (retry up to 2 times).
 
       ### G — UPDATE REVIEW REPORT
-      Edit `.unac/{item-id}/{item-id}_code_review_report.md`:
+      Edit `.unac/{item-id}/{item-id}_code-review-report.md`:
       Mark issue {issue-index} as ✅ CORRECTED (fix iteration {fix_iteration}).
       Read the file back and confirm the update is present (retry up to 2 times).
 
@@ -369,12 +369,12 @@ Each subagent targets only its assigned issue. The parent writes the final summa
      ════════════════════════════════════════════════════════════════════ -->
 - Phase 4: Closure
 
-  - USE #tool:edit/editFiles to finalize `.unac/{item-id}/{item-id}_fix_report.md`
+  - USE #tool:edit/editFiles to finalize `.unac/{item-id}/{item-id}_fix-report.md`
     appending the "Final Summary" section (see <fix_report_template>):
     - Count of ✅ RESOLVED, ⚠️ ESCALATED, ❌ FAILED issues.
     - List of all modified files.
 
-  - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation_progress.md`
+  - USE #tool:edit/editFiles to update `.unac/{item-id}/{item-id}_implementation-progress.md`
     appending:
     ```
     fix-cycle-{fix_iteration}: completed

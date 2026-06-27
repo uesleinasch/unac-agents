@@ -46,10 +46,12 @@ Se `item-id` ou input do usuário estiver ausente, retorne `BLOCKED`.
 - Para Bug: campo **"Impacto"** obrigatório.
 - Para HU: fórmula **"Como ... eu quero ... para que ..."** obrigatória.
 - Escala Fibonacci para estimativa (1, 2, 3, 5, 8, 13, 21...).
+- Após formatar, varra os critérios de aceitação e gere uma seção `## Clarifications needed` no card listando todo AC ambíguo, campo `[PREENCHER]`, ou termo vago não-mensurável (ex.: "rápido", "amigável", "vários"). Se não houver, escreva "Nenhuma". Esta seção é o insumo do **clarify** no Gate B — um AC vago não pode virar teste de aceitação (Fase 4.5), por isso precisa ser resolvido antes da arquitetura.
+- Se o contexto indicar **multi-repo** (handoff/pesquisa apontam mais de um repositório), inclua a seção `## Repositórios impactados` (lista os repos e o papel de cada um) e marque cada task e cada AC com seu `repo`. Os ACs continuam **comportamentais** (do ponto de vista do usuário) — eles ancoram os testes, independentes de repo.
 
 ## Passo 4 — Save
 - Use `Write` para gravar `.unac/{item-id}/{item-id}_jira-card.md`.
-- Use `Write` para gravar `.unac/{item-id}/{item-id}_user_context.md` (se ainda não existe).
+- Use `Write` para gravar `.unac/{item-id}/{item-id}_user-context.md` (se ainda não existe).
 - Use `Read` para confirmar os arquivos (até 2 retries).
 
 # Constraints
@@ -69,11 +71,14 @@ item-id: {item-id}
 type: HU | Task | Bug
 artefacts:
   - .unac/{item-id}/{item-id}_jira-card.md
-  - .unac/{item-id}/{item-id}_user_context.md
+  - .unac/{item-id}/{item-id}_user-context.md
 
 summary: <2-3 frases descrevendo o card produzido>
 
 open-fields: <lista de campos marcados [PREENCHER]; ou "nenhum">
+clarifications-needed: <lista de ACs ambíguos/vagos que precisam de decisão no Gate B; ou "nenhuma">
+multi-repo: true | false
+repos-impacted: <lista de repos + papel; ou n/a>
 
 recommended-next: unac-solution-architect
 handoff-prompt: |

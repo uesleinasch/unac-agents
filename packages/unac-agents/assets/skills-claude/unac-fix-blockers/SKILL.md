@@ -13,7 +13,17 @@ Você é o **controller de fix**. Dispatcha `unac-code-fix` uma vez por issue �
 
 - `item-id` (obrigatório)
 - `fix-iteration` (opcional, default 1; máximo 2)
-- Artefato esperado: `.unac/{item-id}/{item-id}_code_review_report.md` com pelo menos 1 issue `🔴 Blocking`
+- `surviving-list` (opcional) — lista de blockers 🔴 que sobreviveram à verificação adversarial do `unac-verify-review`, no formato YAML:
+  ```
+  surviving-list:
+    - id: B1
+      claim: {claim}
+      evidence: {file:line ou descrição}
+  ```
+  Quando presente, apenas os blockers desta lista são processados; os rebaixados pela verificação adversarial são ignorados.
+  Quando ausente (invocação standalone ou multi-repo sem verificação adversarial), processa TODOS os 🔴 do report — fallback seguro: na dúvida, corrige todos, nunca pula um blocker real.
+- `repo-path` (opcional; default: **cwd**) e `repo-id` (opcional) — em multi-repo, leia o review report **do repo** (`..._code-review-report_<repo>.md`), rode build/test do repo, use a constitution do repo e grave o fix report sufixado por repo. Sem `repo-path`, comportamento single-repo idêntico ao atual.
+- Artefato esperado: `.unac/{item-id}/{item-id}_code-review-report.md` com pelo menos 1 issue `🔴 Blocking`
 
 ## Checklist
 
@@ -24,13 +34,16 @@ Você é o **controller de fix**. Dispatcha `unac-code-fix` uma vez por issue �
 
 ## Passo 1 — Setup
 
-1. `Read` em `{item-id}_code_review_report.md`.
-2. Extraia TODOS os issues marcados `🔴 BLOCKING` em memória:
-   - `issue-index` (sequencial: 1, 2, 3...)
-   - `file`, `line`, `problem`, `suggested-fix`
-   - `ambient` (derive do contexto da task ou fallback "unknown")
-3. Se 0 issues 🔴: anuncie "Nenhum blocker encontrado; nada para corrigir" e retorne.
-4. Use `Write` para criar `.unac/{item-id}/{item-id}_fix_report.md`:
+1. `Read` em `{item-id}_code-review-report.md` e `.unac/constitution.md` (produza um `constitution-summary` curto para os prompts).
+2. Enumere os blockers a processar usando a seguinte lógica:
+   - **SE `surviving-list` foi fornecida** (via `unac-verify-review`): use-a como lista canônica de blockers. Para cada entrada da lista, localize o finding correspondente no report (por `id` ou `claim`) e extraia:
+     - `issue-index` (sequencial: 1, 2, 3...)
+     - `file`, `line`, `problem`, `suggested-fix`
+     - `ambient` (derive do contexto da task ou fallback "unknown")
+     Ignore qualquer 🔴 do report que NÃO conste na `surviving-list` — esses foram rebaixados pela verificação adversarial.
+   - **SE `surviving-list` estiver AUSENTE** (invocação standalone, multi-repo sem verificação, ou qualquer outro caso): extraia TODOS os issues marcados `🔴 BLOCKING` do report. Fallback seguro: na dúvida, corrige todos — nunca pula um blocker real.
+3. Se 0 issues a processar: anuncie "Nenhum blocker encontrado; nada para corrigir" e retorne.
+4. Use `Write` para criar `.unac/{item-id}/{item-id}_fix-report.md`:
 
 ```markdown
 ## Fix Report — {item-id}
@@ -83,8 +96,8 @@ Agent(
     item-id: {item-id}
     issue-index: {issue-index}
     fix-iteration: {N}
-    review-report: .unac/{item-id}/{item-id}_code_review_report.md
-    fix-report: .unac/{item-id}/{item-id}_fix_report.md
+    review-report: .unac/{item-id}/{item-id}_code-review-report.md
+    fix-report: .unac/{item-id}/{item-id}_fix-report.md
 
     ## Issue Descriptor (completo, do review report)
     file: {file}
@@ -93,7 +106,10 @@ Agent(
     problem: {problem}
     suggested-fix: {suggested-fix}
 
-    Apply surgical fix (≤ 10 lines, no redesign). Update both reports.
+    ## Constitution (resumo — não viole)
+    {constitution-summary}
+
+    Apply surgical fix (≤ 10 lines, no redesign) que NÃO viole a constitution (se exigir violar, marque ESCALATED). Do NOT edit acceptance test files. Update both reports.
     Return SUBAGENT_RESULT block + closed STATUS.
   PROMPT
 )
@@ -114,7 +130,7 @@ Agent(
 
 Após todos os issues processados:
 
-1. `Bash`: `npm run build && npm run lint` (ou equivalente); se tiver test suite, rode `npm test`.
+1. `Bash`: `npm run build && npm run lint` (ou equivalente); rode a suíte de testes incluindo os de aceitação `{item-id}.qa.test.*` e confirme que continuam **verdes** (uma correção nunca pode quebrar um teste de aceitação que passava).
 2. Se passar: prossiga para Passo 4.
 3. Se falhar (regressão):
    - `Edit` em fix_report na seção `Regressions Introduced`, listando erros.
@@ -142,7 +158,7 @@ Após todos os issues processados:
 | {N} | YYYY-MM-DD | {N} | {N} | {N} |
 ```
 
-2. `Edit` em `{item-id}_implementation_progress.md`:
+2. `Edit` em `{item-id}_implementation-progress.md`:
 ```
 fix-cycle-{N}: completed
 fixes-resolved: {N of M blocking}
