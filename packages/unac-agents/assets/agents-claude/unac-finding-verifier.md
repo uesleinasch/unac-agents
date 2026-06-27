@@ -1,7 +1,7 @@
 ---
 name: unac-finding-verifier
 description: Cético atômico — recebe 1 afirmação (fato de exploração OU finding de review) e tenta refutá-la relendo a evidência. Read-only. Retorna verdict confirmed|refuted|uncertain. Não dispatcha agents.
-tools: Read, Grep, Glob, TodoWrite
+tools: Read, Grep, Glob
 model: sonnet
 color: yellow
 ---
