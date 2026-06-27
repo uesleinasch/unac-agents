@@ -9,7 +9,7 @@ This is a monorepo with two packages and a collection of agent/skill definitions
 - `agents-claude/` — source of truth for the atomic Claude Code agents (`.md`)
 - `agents-vscode/` — source of truth for the VS Code / Copilot agents (`.agent.md`)
 - `skills-shared/` — content skills used by both IDEs (`clean-code`, `api-patterns`, `jira-card-maker`, etc.)
-- `skills-claude/` — Claude Code-only orchestration skills (`unac-pipeline`, `unac-execute-plan`, `unac-review-implementation`, `unac-fix-blockers`)
+- `skills-claude/` — Claude Code-only orchestration skills (`unac-pipeline`, `unac-execute-plan`, `unac-review-implementation`, `unac-fix-blockers`, `unac-multirepo`, `unac-explore`, `unac-verify-review`)
 - `packages/unac-agents/` — npm-publishable CLI installer (`npx unac-agents`)
 - `packages/interactive-mcp/` — MCP server for interactive user input (TypeScript + Ink)
 
@@ -50,9 +50,13 @@ unac-product-owner → unac-jira-maker → unac-solution-architect → unac-tech
   → unac-developer → unac-qa-engineer → unac-code-reviewer → unac-code-fix
 ```
 
-The `unac-pipeline` skill (in `skills-claude/`) is the meta-orchestrator that drives the whole flow with human gates at the critical edges. The execution loops are also skills: `unac-execute-plan` (dispatches `unac-developer` once per task), `unac-review-implementation` (dispatches `unac-code-reviewer` once per task), and `unac-fix-blockers` (dispatches `unac-code-fix` once per 🔴 BLOCKING issue). **Workers never spawn workers** — a skill is the only dispatch point, so each task runs in an isolated subagent with no inherited context, avoiding context-window exhaustion.
+Two additional read-only workers support the pipeline: `unac-explorer` and `unac-finding-verifier` (both in `agents-claude/`).
+
+The `unac-pipeline` skill (in `skills-claude/`) is the meta-orchestrator that drives the whole flow with human gates at the critical edges. The execution loops are also skills: `unac-execute-plan` (dispatches `unac-developer` once per task), `unac-review-implementation` (dispatches `unac-code-reviewer` once per task), and `unac-fix-blockers` (dispatches `unac-code-fix` once per 🔴 BLOCKING issue). **Workers never spawn workers** — a skill is the only dispatch point, so each task runs in an isolated subagent with no inherited context, avoiding context-window exhaustion. **Parallelism is allowed only in read-only fan-out**: in Phase 1, `unac-explore` dispatches `unac-explorer` agents in parallel to gather codebase facts and `unac-finding-verifier` agents to adversarially challenge those findings (writing `## Fatos não-confirmados / contestados` into `{item-id}_codebase-context.md`). In Phase 7, `unac-review-implementation` invokes `unac-verify-review` to adversarially verify each 🔴 BLOCKING finding before declaring the overall result (writing `## Verificação adversarial` into `{item-id}_code-review-report.md`); only surviving blockers feed Gate E and Phase 7.5.
 
 The flow is **spec-driven and test-first**: a global `.unac/constitution.md` (project principles) governs architect, tech-lead, developer, reviewer and code-fix; acceptance tests are authored from the `jira-card` ACs and confirmed *failing* (Fase 4.5 + Gate C.5) *before* any implementation; `unac-execute-plan` then drives the Green phase and enforces acceptance-test immutability via a hash check. The `jira-card` is the **single source of truth** for acceptance tests — never the plan's per-task criteria. A Traceability Matrix (AC do card → task → test) is validated at Gate C.
+
+When the product-owner detects that an item spans more than one repository, the pipeline switches to **multi-repo mode**: it confirms with the user, discovers the repos (scans the parent dir for `.git`, else asks), writes `.unac/{item-id}/workspace.md`, and delegates Phases 4.5–7.5 to the `unac-multirepo` skill. That skill runs the per-repo cycle (Red→Green→QA→Review) **contract-first** (provider before consumer, anchored on `{item-id}_contract.md`), reusing `unac-execute-plan`/`unac-review-implementation`/`unac-fix-blockers` with a `repo-path`. Per-repo execution artefacts are suffixed (`..._<repo>.md`) and each repo has its own `.unac/constitution.md`. Single-repo remains the default, unchanged.
 
 ### Canonical `.unac/` artefacts
 
