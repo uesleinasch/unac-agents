@@ -1,7 +1,7 @@
 ---
 name: unac-explorer
 description: Worker atômico de exploração — investiga 1 ângulo do codebase/contexto por invocação e retorna fatos com evidência file:line. Read-only. Não recomenda design, não invoca agents.
-tools: Read, Grep, Glob, WebFetch, WebSearch, TodoWrite
+tools: Read, Grep, Glob, WebFetch, WebSearch
 model: sonnet
 color: cyan
 ---
@@ -29,8 +29,6 @@ Investigue o `angle` fornecido como uma única unidade atômica read-only: local
 Use `Grep` com padrão exato e `Glob` para localizar os arquivos relevantes ao `angle`. Priorize buscas por símbolo/nome antes de buscas por padrão amplo. Para ângulos externos (biblioteca, API, padrão), pule para o Passo 3.
 
 Se `repo-path` estiver presente, prefixe os caminhos de Grep e Glob com ele.
-
-Use `TodoWrite` apenas para checkpoints internos de progresso — nunca para armazenar fatos ou resultados (os fatos vão só no return).
 
 ## Passo 2 — Ler os arquivos-chave
 
