@@ -26,9 +26,9 @@ Você DEVE criar uma TODO (`TodoWrite`) com um item para cada fase e completar e
 11. **Fase 5 — Execute Plan (Green)**: invocar skill `unac-execute-plan` (loop de `unac-developer` por task; testes de aceitação são imutáveis)
 12. **Fase 6 — QA (verify)**: dispatchar `unac-qa-engineer` com `mode: verify` (roda os testes imutáveis + NFRs mensuráveis)
 13. **Gate D — QA verdict decision** (approved → Fase 7; failed → volta à Fase 5 para fix)
-14. **Fase 7 — Review**: invocar skill `unac-review-implementation` (loop de `unac-code-reviewer` por task)
+14. **Fase 7 — Review**: invocar skill `unac-review-implementation` (loop de `unac-code-reviewer` por task; inclui verificação adversarial dos blockers via `unac-verify-review` antes de declarar overall result — só blockers sobreviventes alimentam o Gate E e a Fase 7.5)
 15. **Gate E — Review decision** (Approved → Fase 8; Requires Changes → Fase 7.5)
-16. **Fase 7.5 — Fix Blockers**: invocar skill `unac-fix-blockers` (loop de `unac-code-fix` por issue 🔴) → re-executar Fase 7
+16. **Fase 7.5 — Fix Blockers**: invocar skill `unac-fix-blockers` com a `surviving-list` de blockers verificados (loop de `unac-code-fix` por issue 🔴) → re-executar Fase 7
 17. **Fase 8 — Closure**: confirmar artefatos finais e apresentar sumário ao usuário
 
 ## Flow diagram
@@ -61,9 +61,10 @@ digraph unac_pipeline {
     "Gate D: QA verdict" -> "Fase 7: review" [label="approved"];
     "Gate D: QA verdict" -> "Fase 5: execute plan (green)" [label="failed (fix iter ≤ 2)"];
     "Gate D: QA verdict" -> "Fase 8: closure" [label="failed (escalate)"];
-    "Fase 7: review" -> "Gate E: review decision";
-    "Gate E: review decision" -> "Fase 8: closure" [label="approved"];
-    "Gate E: review decision" -> "Fase 7.5: fix blockers" [label="requires changes"];
+    "Fase 7: review" -> "Fase 7: verify-review (adversarial)" [label="consolidar blockers"];
+    "Fase 7: verify-review (adversarial)" -> "Gate E: review decision" [label="surviving-list"];
+    "Gate E: review decision" -> "Fase 8: closure" [label="approved (0 sobreviventes)"];
+    "Gate E: review decision" -> "Fase 7.5: fix blockers" [label="requires changes (≥1 sobrevivente)"];
     "Fase 7.5: fix blockers" -> "Fase 7: review" [label="re-validate"];
 }
 ```
@@ -135,7 +136,7 @@ Os artefatos por-item seguem `{item-id}_<nome-em-kebab>.md`. Há **um artefato g
 | 7 | `{item-id}_code-review-report.md` | review-implementation | code-reviewer (append), fix-blockers, code-fix (edit) |
 | 7.5 | `{item-id}_fix-report.md` | fix-blockers | code-fix (edit) |
 
-**Campos novos em artefatos existentes:** `jira-card` ganha `## Clarifications needed` (e, em multi-repo, `## Repositórios impactados` + `repo` por task/AC); `implementation-plan` ganha `## NFR Matrix`, `## Parallelizable Groups`, `## Traceability Matrix` (AC do card → tasks → testes) e, em multi-repo, `Repo:` por task; `qa-report` registra o estado Red (Fase 4.5) e o Verify (Fase 6). Em multi-repo, `{item-id}_contract.md` ancora a interface cross-repo, e `implementation-progress`/`qa-report`/`code-review-report`/`fix-report` são **sufixados por repo** (`..._<repo>.md`).
+**Campos novos em artefatos existentes:** `jira-card` ganha `## Clarifications needed` (e, em multi-repo, `## Repositórios impactados` + `repo` por task/AC); `implementation-plan` ganha `## NFR Matrix`, `## Parallelizable Groups`, `## Traceability Matrix` (AC do card → tasks → testes) e, em multi-repo, `Repo:` por task; `qa-report` registra o estado Red (Fase 4.5) e o Verify (Fase 6); `codebase-context` ganha `## Fatos não-confirmados / contestados` (produzida por `unac-explore` via fan-out paralelo read-only na Fase 1); `code-review-report` ganha `## Verificação adversarial` — escrita por `unac-verify-review` (invocada por `unac-review-implementation`) antes de declarar o overall result na Fase 7. Em multi-repo, `{item-id}_contract.md` ancora a interface cross-repo, e `implementation-progress`/`qa-report`/`code-review-report`/`fix-report` são **sufixados por repo** (`..._<repo>.md`).
 
 ### `.unac/constitution.md` (artefato global)
 
@@ -334,14 +335,14 @@ Agent(
 - `failed` + `fix-iteration >= 2` → escale ao usuário.
 
 ### Fase 7 — Review
-Invoque a skill `unac-review-implementation` passando o `item-id`. Essa skill gerencia o loop de `unac-code-reviewer` por task.
+Invoque a skill `unac-review-implementation` passando o `item-id`. Essa skill gerencia o loop de `unac-code-reviewer` por task e, antes de declarar o overall result, invoca `unac-verify-review` adversarialmente — apenas blockers sobreviventes à verificação alimentam o Gate E e a Fase 7.5.
 
 ### Gate E — Review decision
 - `Approved` → Fase 8
-- `Requires Changes` → Fase 7.5
+- `Requires Changes` → Fase 7.5 (com a `surviving-list` de blockers verificados)
 
 ### Fase 7.5 — Fix blockers
-Invoque a skill `unac-fix-blockers` passando o `item-id`. Retornando, invoque novamente `unac-review-implementation` para re-validar. Hard limit: 2 ciclos de fix; após isso, escale.
+Invoque a skill `unac-fix-blockers` passando o `item-id` e a `surviving-list` incluída no retorno da `unac-review-implementation` (que orquestra a `unac-verify-review` internamente). Retornando, invoque novamente `unac-review-implementation` para re-validar. Hard limit: 2 ciclos de fix; após isso, escale.
 
 ### Fase 8 — Closure
 - Resuma ao usuário: tasks implementadas, testes passando, review aprovado, artefatos em `.unac/{item-id}/`.
