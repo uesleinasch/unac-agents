@@ -25,9 +25,9 @@ handoffs:
     prompt: >
       The code review for task {item-id} found blocking issues.
       Fix all items classified as 🔴 BLOCKING listed in the review report at
-      `.unac/{item-id}/{item-id}_code_review_report.md`.
-      After corrections, update `.unac/{item-id}/{item-id}_implementation_progress.md`.
-      Produce a fix report at `.unac/{item-id}/{item-id}_fix_report.md`.
+      `.unac/{item-id}/{item-id}_code-review-report.md`.
+      After corrections, update `.unac/{item-id}/{item-id}_implementation-progress.md`.
+      Produce a fix report at `.unac/{item-id}/{item-id}_fix-report.md`.
     send: false
 ---
 
@@ -150,13 +150,13 @@ summary AFTER all tasks complete. Never overwrite — always append.
         Verify the ID is correct and that unac-developer completed the implementation."
       - EXIT.
 
-  - TRY: USE #tool:read to read `.unac/{item-id}/{item-id}_implementation_plan.md`
+  - TRY: USE #tool:read to read `.unac/{item-id}/{item-id}_implementation-plan.md`
     ON SUCCESS: store as `implementation_plan`
     ON FAILURE:
       - RESPOND: "implementation_plan.md not found for {item-id}. This artefact is required."
       - EXIT.
 
-  - TRY: USE #tool:read to read `.unac/{item-id}/{item-id}_implementation_progress.md`
+  - TRY: USE #tool:read to read `.unac/{item-id}/{item-id}_implementation-progress.md`
     ON SUCCESS: store as `implementation_progress`
     ON FAILURE:
       - USE #tool:interactive/ask_user:
@@ -196,7 +196,7 @@ summary AFTER all tasks complete. Never overwrite — always append.
   - USE #tool:todo to create a TODO item for each task in `implementation_plan`.
     - Each TODO: task number, description, status `pending`.
 
-  - USE #tool:edit/createFile to create `.unac/{item-id}/{item-id}_code_review_report.md`
+  - USE #tool:edit/createFile to create `.unac/{item-id}/{item-id}_code-review-report.md`
     using the <review_report_header_template>.
     - Fill in: item-id, date, total_tasks.
     - Leave the "Task Findings" section empty — subagents will append to it.
@@ -241,14 +241,14 @@ summary AFTER all tasks complete. Never overwrite — always append.
       ## Your Assignment
       - Item ID: {item-id}
       - Task number to review: {task-number}
-      - Implementation plan: .unac/{item-id}/{item-id}_implementation_plan.md
-      - Review report (append your findings here): .unac/{item-id}/{item-id}_code_review_report.md
+      - Implementation plan: .unac/{item-id}/{item-id}_implementation-plan.md
+      - Review report (append your findings here): .unac/{item-id}/{item-id}_code-review-report.md
       - Jira card (if exists): .unac/{item-id}/{item-id}_jira-card.md
 
       ## Instructions — execute strictly in order:
 
       ### A — READ THE PLAN
-      Read `.unac/{item-id}/{item-id}_implementation_plan.md` in full.
+      Read `.unac/{item-id}/{item-id}_implementation-plan.md` in full.
       Locate task {task-number}. Extract: description, ambient, files-to-modify,
       acceptance-criteria, and any subtasks.
       Do NOT proceed until you have confirmed the task exists in the plan.
@@ -285,7 +285,7 @@ summary AFTER all tasks complete. Never overwrite — always append.
       - AC compliance: compare against jira-card acceptance criteria (if available)
 
       ### F — APPEND FINDINGS TO REPORT
-      Append the following section to `.unac/{item-id}/{item-id}_code_review_report.md`:
+      Append the following section to `.unac/{item-id}/{item-id}_code-review-report.md`:
 
       ```markdown
       ### Task {task-number} — {task-description}
@@ -348,7 +348,7 @@ summary AFTER all tasks complete. Never overwrite — always append.
      ════════════════════════════════════════════════════════════════════ -->
 - Phase 3: Consolidation
 
-  - USE #tool:read to READ `.unac/{item-id}/{item-id}_code_review_report.md` in full.
+  - USE #tool:read to READ `.unac/{item-id}/{item-id}_code-review-report.md` in full.
 
   - COUNT across all task sections:
     - Total 🔴 Blocking issues
@@ -393,7 +393,7 @@ summary AFTER all tasks complete. Never overwrite — always append.
      🔴 Blocking issues: [N]
      🟡 Suggestions: [N]
      Overall result: [overall]
-     Full report: `.unac/{item-id}/{item-id}_code_review_report.md`"
+     Full report: `.unac/{item-id}/{item-id}_code-review-report.md`"
 
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -413,7 +413,7 @@ summary AFTER all tasks complete. Never overwrite — always append.
       - INCREMENT `fix_iteration` by 1.
       - ⛔ GATE: IF `fix_iteration` > 2:
         - RESPOND: "Two fix cycles completed and blocking issues remain for task {item-id}.
-          Manual review is required. See `.unac/{item-id}/{item-id}_code_review_report.md`."
+          Manual review is required. See `.unac/{item-id}/{item-id}_code-review-report.md`."
         - EXIT — do NOT invoke another fix cycle.
 
       - USE #runSubagent  with the following prompt:
@@ -421,27 +421,27 @@ summary AFTER all tasks complete. Never overwrite — always append.
         Fix all 🔴 BLOCKING issues for task {item-id}.
 
         Context:
-          - Review report:           .unac/{item-id}/{item-id}_code_review_report.md
-          - Implementation plan:     .unac/{item-id}/{item-id}_implementation_plan.md
-          - Implementation progress: .unac/{item-id}/{item-id}_implementation_progress.md
+          - Review report:           .unac/{item-id}/{item-id}_code-review-report.md
+          - Implementation plan:     .unac/{item-id}/{item-id}_implementation-plan.md
+          - Implementation progress: .unac/{item-id}/{item-id}_implementation-progress.md
 
         Fix only the items marked as 🔴 BLOCKING in the review report.
-        After all fixes, update `.unac/{item-id}/{item-id}_implementation_progress.md`.
-        Produce a fix report at `.unac/{item-id}/{item-id}_fix_report.md`.
+        After all fixes, update `.unac/{item-id}/{item-id}_implementation-progress.md`.
+        Produce a fix report at `.unac/{item-id}/{item-id}_fix-report.md`.
         Fix iteration: {fix_iteration} of 2.
         ```
 
       - AFTER subagent returns:
         - RE-READ only the files listed in the fix report as modified.
         - RE-EVALUATE the resolved blockers.
-        - UPDATE `.unac/{item-id}/{item-id}_code_review_report.md`:
+        - UPDATE `.unac/{item-id}/{item-id}_code-review-report.md`:
           - Mark resolved issues as ✅
           - Add new iteration row to the "Review History" table.
         - IF new or remaining 🔴 blockers: REPEAT Phase 4 loop (up to iteration 2 total).
         - IF no 🔴 blockers remain: CONTINUE to approval path below.
 
   - IF NO 🔴 BLOCKING issues (or all resolved):
-    - USE #tool:edit/editFiles to add to `.unac/{item-id}/{item-id}_implementation_progress.md`:
+    - USE #tool:edit/editFiles to add to `.unac/{item-id}/{item-id}_implementation-progress.md`:
       ```
       ## Review Status
       result: approved

@@ -22,18 +22,18 @@ handoffs:
     agent: unac-code-reviewer
     prompt: >
       All acceptance criteria for task {item-id} have been validated by unac-qa-engineer.
-      The QA report is at `.unac/{item-id}/{item-id}_qa_report.md`.
-      The implementation plan is at `.unac/{item-id}/{item-id}_implementation_plan.md`.
-      The implementation progress log is at `.unac/{item-id}/{item-id}_implementation_progress.md`.
+      The QA report is at `.unac/{item-id}/{item-id}_qa-report.md`.
+      The implementation plan is at `.unac/{item-id}/{item-id}_implementation-plan.md`.
+      The implementation progress log is at `.unac/{item-id}/{item-id}_implementation-progress.md`.
       All modified files are listed in the implementation plan under the "Files" section.
-      Produce the review report at `.unac/{item-id}/{item-id}_code_review_report.md`.
+      Produce the review report at `.unac/{item-id}/{item-id}_code-review-report.md`.
     send: false
 
   - label: "⬆️ Escalate to Tech Lead"
     agent: unac-tech-lead
     prompt: >
       The QA Engineer was unable to validate task {item-id} after 2 fix iterations.
-      Acceptance criteria could not be satisfied. Details are in `.unac/{item-id}/{item-id}_qa_report.md`.
+      Acceptance criteria could not be satisfied. Details are in `.unac/{item-id}/{item-id}_qa-report.md`.
       Review the implementation plan and determine whether re-scoping is necessary.
     send: false
 ---
@@ -131,13 +131,13 @@ Phase 5: Closure — finalize QA report and present handoff
         Run unac-developer before running this agent."
       - EXIT.
 
-  - TRY: READ `.unac/{item-id}/{item-id}_implementation_plan.md`
+  - TRY: READ `.unac/{item-id}/{item-id}_implementation-plan.md`
     ON SUCCESS: store as `implementation_plan`
     ON FAILURE:
       - RESPOND: "Implementation plan not found. Run unac-tech-lead and unac-developer first."
       - EXIT.
 
-  - TRY: READ `.unac/{item-id}/{item-id}_implementation_progress.md`
+  - TRY: READ `.unac/{item-id}/{item-id}_implementation-progress.md`
     ON SUCCESS: store as `implementation_progress`
     ON FAILURE:
       - RESPOND: "Implementation progress file not found. Ensure unac-developer completed successfully."
@@ -273,7 +273,7 @@ Phase 5: Closure — finalize QA report and present handoff
     - FOR EACH failure: record the error message and the most relevant stack trace line.
     - Store results as `test_results`.
 
-  - USE #tool:edit/createFile to write `.unac/{item-id}/{item-id}_qa_report.md`
+  - USE #tool:edit/createFile to write `.unac/{item-id}/{item-id}_qa-report.md`
     using the <qa_report_template>.
 
   - USE #tool:read to READ the QA report back and CONFIRM it was written.
@@ -296,7 +296,7 @@ Phase 5: Closure — finalize QA report and present handoff
   - EVALUATE `test_results`:
 
   ── IF ALL tests passed ──────────────────────────────────────────────
-    - USE #tool:edit/editFiles to append to `.unac/{item-id}/{item-id}_qa_report.md`:
+    - USE #tool:edit/editFiles to append to `.unac/{item-id}/{item-id}_qa-report.md`:
       ```
       ## QA Verdict
       status: approved
@@ -313,19 +313,19 @@ Phase 5: Closure — finalize QA report and present handoff
       ```
       item-id: {item-id}
       reason: QA validation failed — fix iteration {fix_iterations} of 2
-      qa_report: .unac/{item-id}/{item-id}_qa_report.md
+      qa_report: .unac/{item-id}/{item-id}_qa-report.md
       failed_criteria:
         - [list each failing criterion with its associated error message]
       test_files:
         - [list the test file paths written in Phase 2]
-      implementation_plan: .unac/{item-id}/{item-id}_implementation_plan.md
+      implementation_plan: .unac/{item-id}/{item-id}_implementation-plan.md
       instruction: >
         Fix only the source code paths that cause the listed test failures.
         Do NOT modify the test files — they are owned by the QA engineer.
         After fixing, verify the build is clean before returning.
       ```
     - WAIT for unac-developer subagent to return.
-    - UPDATE `.unac/{item-id}/{item-id}_qa_report.md` — append an iteration section:
+    - UPDATE `.unac/{item-id}/{item-id}_qa-report.md` — append an iteration section:
       ```
       ### Iteration {fix_iterations}
       date: YYYY-MM-DD
@@ -337,7 +337,7 @@ Phase 5: Closure — finalize QA report and present handoff
     - RETURN to Phase 4 top.
 
   ── IF ANY test failed AND fix_iterations >= 2 ───────────────────────
-    - USE #tool:edit/editFiles to append to `.unac/{item-id}/{item-id}_qa_report.md`:
+    - USE #tool:edit/editFiles to append to `.unac/{item-id}/{item-id}_qa-report.md`:
       ```
       ## QA Verdict
       status: failed

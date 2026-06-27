@@ -12,7 +12,8 @@ Você é o **controller de review**. Dispatcha `unac-code-reviewer` uma vez por 
 ## Input contract
 
 - `item-id` (obrigatório)
-- Artefatos esperados: `{item-id}_implementation_plan.md`, `{item-id}_implementation_progress.md`, `{item-id}_jira-card.md` em `.unac/{item-id}/`
+- Artefatos esperados: `{item-id}_implementation-plan.md`, `{item-id}_implementation-progress.md`, `{item-id}_jira-card.md` em `.unac/{item-id}/`
+- `repo-path` (opcional; default: **cwd**) e `repo-id` (opcional) — em multi-repo, revise apenas as tasks daquele repo, leia a constitution e os NFRs **do repo**, e use o report sufixado por repo (`{item-id}_code-review-report_<repo>.md`). Sem `repo-path`, comportamento single-repo idêntico ao atual.
 
 ## Checklist
 
@@ -23,11 +24,11 @@ Você é o **controller de review**. Dispatcha `unac-code-reviewer` uma vez por 
 
 ## Passo 1 — Setup
 
-1. `Read` em `{item-id}_implementation_plan.md`, `{item-id}_implementation_progress.md`, `{item-id}_jira-card.md`.
+1. `Read` em `{item-id}_implementation-plan.md`, `{item-id}_implementation-progress.md`, `{item-id}_jira-card.md` e `.unac/constitution.md`.
 2. Extraia em memória cada task: `task-number`, `description`, `ambient`, `files-to-modify`, `acceptance-criteria`.
-3. Extraia ACs do Jira card.
+3. Extraia os ACs do Jira card, um `constitution-summary` curto, e os **NFRs auditáveis** da `## NFR Matrix` do plano.
 4. Verifique `status: ready-for-review` no progress file. Se não, apresente warning mas pode prosseguir se o usuário confirmar.
-5. Use `Write` para criar `.unac/{item-id}/{item-id}_code_review_report.md`:
+5. Use `Write` para criar `.unac/{item-id}/{item-id}_code-review-report.md`:
 
 ```markdown
 # Code Review Report — {item-id}
@@ -60,7 +61,7 @@ Agent(
   prompt: <<PROMPT
     item-id: {item-id}
     task-number: {task-number}
-    report-path: .unac/{item-id}/{item-id}_code_review_report.md
+    report-path: .unac/{item-id}/{item-id}_code-review-report.md
 
     ## Task Description (completo, do plano)
     {description}
@@ -74,7 +75,14 @@ Agent(
     ## Acceptance Criteria (do Jira card)
     {lista}
 
+    ## Constitution (resumo — audite aderência)
+    {constitution-summary}
+
+    ## NFRs auditáveis (da NFR Matrix do plano)
+    {lista}
+
     Review this task only. Append findings section to report-path.
+    Inclua os eixos Constitution compliance e NFR audit.
     Return closed status (DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT).
   PROMPT
 )
@@ -96,11 +104,18 @@ Após todas as tasks revisadas:
    - 🟡 Suggestions (total)
    - 🔵 Informational (total)
    - ✅ Positive highlights (total)
-3. Determine **Overall result**:
-   - Se qualquer 🔴 → `🚫 Requires Changes`
+   - ⚖️ Violações de constitution (total)
+   - 📐 Gaps de NFR auditável (total)
+3. **Verificação adversarial dos blockers** — ANTES de declarar o overall result, invoque:
+   ```
+   Skill("unac-verify-review", args: "item-id: {item-id}  report-path: .unac/{item-id}/{item-id}_code-review-report.md")
+   ```
+   Use a `surviving-list` retornada como a lista canônica de 🔴 blockers. Blockers downgraded são descartados do overall result e do handoff para `unac-fix-blockers`.
+4. Determine **Overall result** (baseado nos **blockers sobreviventes** após verificação):
+   - Se `blockers-surviving ≥ 1` → `🚫 Requires Changes`
    - Senão, se qualquer 🟡 → `🔄 Approved with Suggestions`
    - Senão → `✅ Approved`
-4. Use `Edit` no report para append:
+5. Use `Edit` no report para append:
 
 ```markdown
 ---
@@ -117,6 +132,8 @@ Após todas as tasks revisadas:
 | 🟡 Suggestions | {N} |
 | 🔵 Informational | {N} |
 | ✅ Positive highlights | {N} |
+| ⚖️ Constitution violations | {N} |
+| 📐 NFR audit gaps | {N} |
 
 ### Review History
 | Iteration | Date | Result | Blockers Resolved |
@@ -128,7 +145,7 @@ Após todas as tasks revisadas:
 
 Apresente ao usuário:
 
-- **`✅ Approved`** ou **`🔄 Approved with Suggestions`**: escreva status no `{item-id}_implementation_progress.md`:
+- **`✅ Approved`** ou **`🔄 Approved with Suggestions`**: escreva status no `{item-id}_implementation-progress.md`:
   ```
   ## Review Status
   result: approved
@@ -138,9 +155,13 @@ Apresente ao usuário:
   Anuncie: "Review aprovado. Sugestões registradas no report."
 
 - **`🚫 Requires Changes`**: apresente:
-  > "Review encontrou {N} blocking issues. Opções: (A) invocar `unac-fix-blockers` skill agora, (B) revisar manualmente, (C) abortar."
+  > "Review encontrou {N} blocking issues sobreviventes (após verificação adversarial). Opções: (A) invocar `unac-fix-blockers` skill agora, (B) revisar manualmente, (C) abortar."
 
-  Se A: invoque `Skill("unac-fix-blockers")` com o `item-id`. Quando retornar, REINVOQUE esta skill (`unac-review-implementation`) para re-validar. **Limite 2 iterações** de review+fix; depois escale.
+  Se A: invoque `unac-fix-blockers` passando o `item-id` e a `surviving-list` retornada pela `unac-verify-review`, serializando a lista no `args:` (análogo à invocação da verify-review):
+  ```
+  Skill("unac-fix-blockers", args: "item-id: {item-id}  surviving-list: <blockers sobreviventes retornados pela unac-verify-review>")
+  ```
+  Quando retornar, REINVOQUE esta skill (`unac-review-implementation`) para re-validar. **Limite 2 iterações** de review+fix; depois escale.
 
 ## Red flags
 

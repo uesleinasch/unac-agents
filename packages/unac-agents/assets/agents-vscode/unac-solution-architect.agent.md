@@ -11,7 +11,7 @@ handoffs:
   - label: "▶ Start Implementation"
     agent: unac-developer
     prompt: >
-      Implement the tasks defined in `.unac/{item-id}/{item-id}_implementation_plan.md`.
+      Implement the tasks defined in `.unac/{item-id}/{item-id}_implementation-plan.md`.
       Follow all technical standards, acceptance criteria, and implementation notes
       in the plan. The item-id is {item-id}.
     send: false
@@ -64,10 +64,10 @@ handoffs:
   5. Expand understanding via relationships.
   6. read_file — detailed examination of key files.
 - EXTRACT main requirements, constraints, and architectural insights.
-- RUN #tool:edit/createFile and CREATE `.unac/{item-id}/{item-id}_plan_briefing.md` with the main information, references, and insights gathered from all files read.
+- RUN #tool:edit/createFile and CREATE `.unac/{item-id}/{item-id}_plan-briefing.md` with the main information, references, and insights gathered from all files read.
 
 ⛔ GATE CHECK — Phase 1 exit:
-  - VERIFY: `.unac/{item-id}/{item-id}_plan_briefing.md` exists and is non-empty.
+  - VERIFY: `.unac/{item-id}/{item-id}_plan-briefing.md` exists and is non-empty.
   - RUN #tool:read/readFile to confirm file existence and content.
   - IF missing or empty → REPEAT Phase 1. Do NOT advance.
   - IF confirmed → mark "Phase 1: Research" as complete in TODO. NEXT: Phase 2.
@@ -77,10 +77,10 @@ handoffs:
 ## Phase 2: Planning
 - INVOKE architecture SKILL.
 - INVOKE clean-code SKILL.
-- RUN #tool:read/readFile and READ `.unac/{item-id}/{item-id}_plan_briefing.md`.
+- RUN #tool:read/readFile and READ `.unac/{item-id}/{item-id}_plan-briefing.md`.
 - RUN #tool:read/readFile and READ `.unac/{item-id}/{item-id}_jira-card.md`.
 - DESIGN the implementation plan following the <implementation_plan_template>.
-- RUN #tool:edit/createFile and CREATE `.unac/{item-id}/{item-id}_implementation_plan.md` with the full implementation plan.
+- RUN #tool:edit/createFile and CREATE `.unac/{item-id}/{item-id}_implementation-plan.md` with the full implementation plan.
   - The plan MUST include:
     - All tasks with descriptions, ambient, status, and acceptance criteria.
     - Task dependencies clearly mapped.
@@ -88,7 +88,7 @@ handoffs:
     - Architecture diagram in Mermaid or PlantUML when the solution involves multiple components.
 
 ⛔ GATE CHECK — Phase 2 exit:
-  - VERIFY: `.unac/{item-id}/{item-id}_implementation_plan.md` exists and is non-empty.
+  - VERIFY: `.unac/{item-id}/{item-id}_implementation-plan.md` exists and is non-empty.
   - RUN #tool:read/readFile to confirm file existence and content.
   - IF missing or empty → REPEAT Phase 2. Do NOT advance.
   - IF confirmed → mark "Phase 2: Planning" as complete in TODO. NEXT: Phase 3.
@@ -101,24 +101,24 @@ handoffs:
   Validate and decompose the implementation plan for item {item-id}.
 
   Files available:
-  - Plan: `.unac/{item-id}/{item-id}_implementation_plan.md`
+  - Plan: `.unac/{item-id}/{item-id}_implementation-plan.md`
   - Jira card: `.unac/{item-id}/{item-id}_jira-card.md`
   - Codebase context: `.unac/{item-id}/{item-id}_codebase-context.md` (if exists)
   - Research: `.unac/{item-id}/{item-id}_research.md` (if exists)
-  - Briefing: `.unac/{item-id}/{item-id}_plan_briefing.md`
+  - Briefing: `.unac/{item-id}/{item-id}_plan-briefing.md`
 
   Your task:
   1. Read the plan and the Jira card.
   2. Validate the plan is complete, aligned with requirements, and structurally sound.
   3. Decompose any tasks that are too broad into precise, developer-ready subtasks with verifiable acceptance criteria and estimated complexity.
-  4. Update `.unac/{item-id}/{item-id}_implementation_plan.md` with your breakdown.
+  4. Update `.unac/{item-id}/{item-id}_implementation-plan.md` with your breakdown.
   5. Return a brief summary of what was validated and what was changed.
   ```
 - WAIT for the subagent response.
-- RUN #tool:read/readFile and READ the updated `.unac/{item-id}/{item-id}_implementation_plan.md`.
+- RUN #tool:read/readFile and READ the updated `.unac/{item-id}/{item-id}_implementation-plan.md`.
 
 ⛔ GATE CHECK — Phase 3 exit:
-  - VERIFY: `.unac/{item-id}/{item-id}_implementation_plan.md` was updated by the subagent.
+  - VERIFY: `.unac/{item-id}/{item-id}_implementation-plan.md` was updated by the subagent.
   - IF subagent failed or returned an error → RUN #tool:interactive/ask_user to inform the user and request a decision (retry or proceed manually).
   - IF successful → mark "Phase 3: Tech Lead Validation" as complete in TODO. NEXT: Phase 4.
 
@@ -147,7 +147,7 @@ handoffs:
         - ELSE:
           - DETERMINE scope of changes:
             - IF changes are minor (wording, acceptance criteria adjustments):
-              - APPLY changes directly to `.unac/{item-id}/{item-id}_implementation_plan.md`.
+              - APPLY changes directly to `.unac/{item-id}/{item-id}_implementation-plan.md`.
               - GO BACK to Phase 4: User Approval.
             - IF changes affect the architectural approach or task structure:
               - GO BACK to Phase 2: Planning.

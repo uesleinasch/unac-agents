@@ -25,10 +25,10 @@ handoffs:
     agent: unac-qa-engineer
     prompt: >
       Validate the implementation of task {item-id} against the acceptance criteria.
-      The implementation plan is at `.unac/{item-id}/{item-id}_implementation_plan.md`.
-      The implementation progress log is at `.unac/{item-id}/{item-id}_implementation_progress.md`.
+      The implementation plan is at `.unac/{item-id}/{item-id}_implementation-plan.md`.
+      The implementation progress log is at `.unac/{item-id}/{item-id}_implementation-progress.md`.
       All modified files are listed in the implementation plan under the "Files" section.
-      Produce the QA report at `.unac/{item-id}/{item-id}_qa_report.md`.
+      Produce the QA report at `.unac/{item-id}/{item-id}_qa-report.md`.
     send: false
 
   - label: "⬆️ Escalate to Tech Lead"
@@ -36,7 +36,7 @@ handoffs:
     prompt: >
       The developer encountered a blocking issue during implementation of task {item-id}
       that requires architectural decision or task re-scoping.
-      Details are in `.unac/{item-id}/{item-id}_implementation_progress.md` under the "Blockers" section.
+      Details are in `.unac/{item-id}/{item-id}_implementation-progress.md` under the "Blockers" section.
     send: false
 ---
 
@@ -175,10 +175,10 @@ After ALL tasks complete:
         Ensure the implementation plan was created by unac-tech-lead before running this agent."
       - EXIT.
 
-  - TRY: USE #tool:read to read `.unac/{item-id}/{item-id}_implementation_plan.md`
+  - TRY: USE #tool:read to read `.unac/{item-id}/{item-id}_implementation-plan.md`
     ON SUCCESS: store as `implementation_plan`
     ON FAILURE:
-      - RESPOND: "Implementation plan not found at `.unac/{item-id}/{item-id}_implementation_plan.md`.
+      - RESPOND: "Implementation plan not found at `.unac/{item-id}/{item-id}_implementation-plan.md`.
         Run unac-solution-architect and unac-tech-lead before proceeding."
       - EXIT.
 
@@ -194,7 +194,7 @@ After ALL tasks complete:
      ════════════════════════════════════════════════════════════════════ -->
 - Phase 1: Setup
 
-  - USE #tool:edit/createFile to create `.unac/{item-id}/{item-id}_implementation_progress.md`
+  - USE #tool:edit/createFile to create `.unac/{item-id}/{item-id}_implementation-progress.md`
     using the <implementation_progress_template> with ALL tasks listed as `pending`.
 
   - USE #tool:read to READ the progress file back and CONFIRM it was written with all tasks.
@@ -242,24 +242,24 @@ After ALL tasks complete:
       ## Your Assignment
       - Item ID: {item-id}
       - Task number to implement: {task-number}
-      - Implementation plan: .unac/{item-id}/{item-id}_implementation_plan.md
-      - Progress file: .unac/{item-id}/{item-id}_implementation_progress.md
+      - Implementation plan: .unac/{item-id}/{item-id}_implementation-plan.md
+      - Progress file: .unac/{item-id}/{item-id}_implementation-progress.md
 
       ## Instructions — execute strictly in order:
 
       ### A — READ THE PLAN
-      Read `.unac/{item-id}/{item-id}_implementation_plan.md` in full.
+      Read `.unac/{item-id}/{item-id}_implementation-plan.md` in full.
       Locate task {task-number}. Extract: description, ambient, files-to-modify,
       acceptance-criteria, and any subtasks. Do NOT proceed until you have confirmed
       the task exists in the plan.
 
       ### B — MARK IN PROGRESS (progress file)
-      Edit `.unac/{item-id}/{item-id}_implementation_progress.md` and set task {task-number}
+      Edit `.unac/{item-id}/{item-id}_implementation-progress.md` and set task {task-number}
       status to `in_progress`. Read the file back and confirm. Retry up to 2 times.
       If still not confirmed: abort and report the failure.
 
       ### C — MARK IN PROGRESS (implementation plan)
-      Edit `.unac/{item-id}/{item-id}_implementation_plan.md` and set task {task-number}
+      Edit `.unac/{item-id}/{item-id}_implementation-plan.md` and set task {task-number}
       status to `in_progress`. Read it back and confirm. Retry up to 2 times.
       If still not confirmed: abort and report the failure.
 
@@ -288,11 +288,11 @@ After ALL tasks complete:
       record the blocker in the progress file and stop — do NOT mark as completed.
 
       ### H — MARK COMPLETED (progress file)
-      Edit `.unac/{item-id}/{item-id}_implementation_progress.md` and set task {task-number}
+      Edit `.unac/{item-id}/{item-id}_implementation-progress.md` and set task {task-number}
       status to `completed`. Read back and confirm. Retry up to 2 times if needed.
 
       ### I — MARK COMPLETED (implementation plan)
-      Edit `.unac/{item-id}/{item-id}_implementation_plan.md` and set task {task-number}
+      Edit `.unac/{item-id}/{item-id}_implementation-plan.md` and set task {task-number}
       status to `completed`. Read back and confirm. Retry up to 2 times if needed.
 
       ## Return
@@ -362,7 +362,7 @@ After ALL tasks complete:
      ════════════════════════════════════════════════════════════════════ -->
 - Phase 4: Closure
 
-  - USE #tool:edit/editFiles to finalize `.unac/{item-id}/{item-id}_implementation_progress.md`
+  - USE #tool:edit/editFiles to finalize `.unac/{item-id}/{item-id}_implementation-progress.md`
     adding to the end:
     ```
     ## Review Handoff
@@ -401,7 +401,7 @@ After ALL tasks complete:
 
 **Agent**: unac-developer
 **Date started**: YYYY-MM-DD
-**Plan source**: `.unac/{item-id}/{item-id}_implementation_plan.md`
+**Plan source**: `.unac/{item-id}/{item-id}_implementation-plan.md`
 
 ---
 

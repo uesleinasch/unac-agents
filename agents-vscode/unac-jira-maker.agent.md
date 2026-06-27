@@ -153,7 +153,7 @@ Present the formatted card to the user via **#interactive** for review.
   - Save immediately — no confirmation needed. The parent agent controls this decision.
   - Verify whether `.unac/{item-id}/` exists in the project root. Create it if it does not.
   - Save the card: `.unac/{item-id}/{item-id}_jira-card.md`
-  - Save the user input: `.unac/{item-id}/{item-id}_user_context.md`
+  - Save the user input: `.unac/{item-id}/{item-id}_user-context.md`
   - Return a confirmation message to the parent agent with the paths of the saved files.
 
   **When invoked directly by the user:**
@@ -161,7 +161,7 @@ Present the formatted card to the user via **#interactive** for review.
   - **IF yes:**
     - Verify whether `.unac/` exists in the project root. Create `.unac/{item-id}/` if it does not.
     - Save the card: `.unac/{item-id}/{item-id}_jira-card.md`
-    - Save the user input: `.unac/{item-id}/{item-id}_user_context.md`
+    - Save the user input: `.unac/{item-id}/{item-id}_user-context.md`
   - **IF no:** present the card as final output in chat only.
 
 ---
